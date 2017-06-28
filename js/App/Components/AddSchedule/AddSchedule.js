@@ -25,7 +25,7 @@ import React from 'react';
 import { connect } from 'react-redux';
 import { TouchableOpacity, Image, Dimensions } from 'react-native';
 import { NavigationActions } from 'react-navigation';
-import { View, Text } from 'BaseComponents';
+import { View, Text, Header } from 'BaseComponents';
 import { reset } from 'Actions_AddSchedule';
 
 import Device from './Device';
@@ -102,29 +102,6 @@ class AddSchedule extends View {
 					width: this.deviceWidth,
 				},
 			},
-			backButton: {
-				container: {
-					width: this.deviceWidth * 0.130666667 + 3,
-					height: this.deviceWidth * 0.036 + 3,
-					position: 'absolute',
-					top: this.deviceWidth * 0.037333333,
-					left: this.deviceWidth * 0.026666667,
-				},
-				wrapper: {
-					flex: 1,
-					flexDirection: 'row',
-					alignItems: 'center',
-				},
-				image: {
-					width: this.deviceWidth * 0.022666667,
-					height: this.deviceWidth * 0.036,
-				},
-				text: {
-					color: '#fff',
-					marginLeft: this.deviceWidth * 0.026666667,
-					fontSize: this.deviceWidth * 0.037333333,
-				},
-			},
 			header: {
 				container: {
 					position: 'absolute',
@@ -167,7 +144,7 @@ class AddSchedule extends View {
 		if (this.props.index === 0) {
 			this.props.reset();
 		}
-		this.props.navigation.goBack();
+		this.props.navigation.goBack(null);
 	};
 
 	goNext = () => {
@@ -191,23 +168,13 @@ class AddSchedule extends View {
 		const { index } = this.props;
 
 		return (
-			<View style={{ flex: 1 }}>
+			<View>
+				<Header goBack={this.goBack}/>
 				<View style={bgImage.mask}>
 					<Image
 						source={require('./img/telldus-geometric-header-bg.png')}
 						style={bgImage.image}
 					/>
-					<TouchableOpacity onPress={this.goBack} style={backButton.container}>
-						<View style={backButton.wrapper}>
-							<Image
-								source={require('./img/keyboard-left-arrow-button.png')}
-								style={backButton.image}
-							/>
-							<Text style={backButton.text}>
-								Back
-							</Text>
-						</View>
-					</TouchableOpacity>
 					<View style={header.container}>
 						<Text style={header.h1}>
 							{routes[index].h1}

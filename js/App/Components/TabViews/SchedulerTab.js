@@ -34,10 +34,7 @@ import moment from 'moment-timezone';
 
 import { parseJobsForListView } from 'Reducers_Jobs';
 
-import { Image, Dimensions, TouchableOpacity } from 'react-native';
 import getTabBarIcon from '../../Lib/getTabBarIcon';
-import { StackNavigator } from 'react-navigation';
-import AddSchedule from '../AddSchedule/AddSchedule';
 
 type Props = {
 	rowsAndSections: Object,
@@ -60,10 +57,6 @@ class SchedulerTab extends View {
 	renderSectionHeader: (sectionData: Object, sectionId: number) => Object;
 	onRefresh: () => void;
 
-	static navigationOptions = {
-		title: I18n.t('pages.scheduler'),
-	};
-
 	constructor(props: Props) {
 		super(props);
 
@@ -75,56 +68,6 @@ class SchedulerTab extends View {
 				sectionHeaderHasChanged: (s1, s2) => s1 !== s2,
 			}).cloneWithRowsAndSections(sections, sectionIds),
 		};
-
-		this.windowHeight = Dimensions.get('window').height;
-		this.windowWidth = Dimensions.get('window').width;
-		this.addButtonSize = this.windowWidth * 0.134666667;
-		this.addButtonOffset = this.windowWidth * 0.034666667;
-		this.addButtonTextSize = this.windowWidth * 0.056;
-
-		const centerContent = {
-			flex: 1,
-			justifyContent: 'center',
-			alignItems: 'center',
-		};
-
-		this.styles = {
-			centerContent,
-			container: {
-				flex: 1,
-			},
-			header: {
-				...centerContent,
-				paddingTop: 20,
-				backgroundColor: Theme.Core.brandPrimary,
-				maxHeight: this.windowHeight * 0.095952024,
-			},
-			addButton: {
-				backgroundColor: Theme.Core.brandSecondary,
-				borderRadius: 50,
-				position: 'absolute',
-				height: this.addButtonSize,
-				width: this.addButtonSize,
-				bottom: this.addButtonOffset,
-				right: this.addButtonOffset,
-				shadowColor: '#000',
-				shadowOpacity: 0.5,
-				shadowRadius: 2,
-				shadowOffset: {
-					height: 2,
-					width: 0,
-				},
-				elevation: 3,
-			},
-			iconPlus: {
-				width: this.addButtonTextSize,
-				height: this.addButtonTextSize,
-			},
-		};
-
-		this.renderRow = this.renderRow.bind(this);
-		this.renderSectionHeader = this.renderSectionHeader.bind(this);
-		this.onRefresh = this.onRefresh.bind(this);
 	}
 
 	componentWillReceiveProps(nextProps) {
@@ -135,9 +78,9 @@ class SchedulerTab extends View {
 		});
 	}
 
-	onRefresh() {
+	onRefresh = () => {
 		this.props.dispatch(getJobs());
-	}
+	};
 
 	rowHasChanged(r1, r2) {
 		if (r1 === r2) {
@@ -151,29 +94,20 @@ class SchedulerTab extends View {
 		);
 	}
 
-	handleAddingSchedule = () => {
-		this.props.navigation.navigate('Device');
-	};
-
 	render() {
 		return (
-			<View style={this.styles.container}>
+			<View>
 				<List
 					dataSource={this.state.dataSource}
 					renderRow={this.renderRow}
 					renderSectionHeader={this.renderSectionHeader}
 					onRefresh={this.onRefresh}
 				/>
-				<TouchableOpacity style={this.styles.addButton} onPress={this.handleAddingSchedule}>
-					<View style={this.styles.centerContent}>
-						<Image source={require('./img/iconPlus.png')} style={this.styles.iconPlus}/>
-					</View>
-				</TouchableOpacity>
 			</View>
 		);
 	}
 
-	renderSectionHeader(sectionData, sectionId) {
+	renderSectionHeader = (sectionData, sectionId) => {
 		// TODO: move to own Component
 		const todayInWeek = parseInt(moment().format('d'), 10);
 		const absoluteDayInWeek = (todayInWeek + sectionId) % 7;
@@ -196,14 +130,19 @@ class SchedulerTab extends View {
 				</Text>
 			</View>
 		);
-	}
+	};
 
-	renderRow(props) {
+	renderRow = props => {
 		return (
 			<JobRow {...props} />
 		);
-	}
+	};
 }
+
+SchedulerTab.navigationOptions = {
+	title: I18n.t('pages.scheduler'),
+	tabBarIcon: ({ focused, tintColor }) => getTabBarIcon(focused, tintColor, 'scheduler'),
+};
 
 SchedulerTab.propTypes = {
 	rowsAndSections: React.PropTypes.object,
@@ -237,35 +176,4 @@ function mapDispatchToProps(dispatch) {
 	};
 }
 
-const Scheduler = StackNavigator(
-	{
-		Scheduler: {
-			screen: connect(mapStateToProps, mapDispatchToProps)(SchedulerTab)
-		},
-		Device: {
-			screen: ({ navigation }) => <AddSchedule index={0} navigation={navigation}/>,
-		},
-		Action: {
-			screen: ({ navigation }) => <AddSchedule index={1} navigation={navigation}/>,
-		},
-		Time: {
-			screen: ({ navigation }) => <AddSchedule index={2} navigation={navigation}/>,
-		},
-		Days: {
-			screen: ({ navigation }) => <AddSchedule index={3} navigation={navigation}/>,
-		},
-		Summary: {
-			screen: ({ navigation }) => <AddSchedule index={4} navigation={navigation}/>,
-		},
-	},
-	{
-		initialRouteName: 'Scheduler',
-		headerMode: 'none',
-		navigationOptions: {
-			tabBarIcon: ({ focused, tintColor }) => getTabBarIcon(focused, tintColor, 'scheduler'),
-			//gesturesEnabled: false,
-		},
-	}
-);
-
-module.exports = Scheduler;
+module.exports = connect(mapStateToProps, mapDispatchToProps)(SchedulerTab);

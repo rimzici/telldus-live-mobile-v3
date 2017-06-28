@@ -22,7 +22,7 @@
 'use strict';
 
 import React from 'react';
-import { Platform, Image, Dimensions, Text, StyleSheet, TouchableWithoutFeedback } from 'react-native';
+import { Platform, Image, Dimensions, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Base from './Base';
 import computeProps from './computeProps';
 import Button from './Button';
@@ -41,24 +41,35 @@ type Props = {
 };
 
 export default class HeaderComponent extends Base {
+
 	props: Props;
 
+	getInitialStyle: () => Object;
+	prepareRootProps: () => Object;
+	renderChildren: () => Object;
+	renderRightButton: () => Object;
+
 	getInitialStyle() {
+		this.deviceWidth = Dimensions.get('window').width;
+
+		this.paddingHorizontal = 15;
+		this.paddingTop = (Platform.OS === 'ios' ) ? 15 : 0;
+
 		return {
 			navbar: {
 				backgroundColor: this.getTheme().toolbarDefaultBg,
 				justifyContent: (!Array.isArray(this.props.children)) ? 'center' : 'space-between',
 				flexDirection: 'row',
 				alignItems: 'center',
-				paddingHorizontal: 15,
-				paddingTop: (Platform.OS === 'ios' ) ? 15 : 0,
+				paddingHorizontal: this.paddingHorizontal,
+				paddingTop: this.paddingTop,
 				height: this.getTheme().toolbarHeight,
 				elevation: 3,
 				position: 'relative',
 			},
 			logoImage: {
-				width: Dimensions.get('window').width * 0.277333333,
-				height: Dimensions.get('window').height * 0.026236882,
+				width: this.deviceWidth * 0.277333333,
+				height: this.deviceWidth * 0.046666667,
 			},
 			iosToolbarSearch: {
 				backgroundColor: this.getTheme().toolbarInputColor,
@@ -75,7 +86,30 @@ export default class HeaderComponent extends Base {
 				flex: 1,
 			},
 			toolbarButton: {
-				paddingHorizontal: 15,
+				paddingHorizontal: this.paddingHorizontal,
+			},
+			headerButton: {
+				...StyleSheet.absoluteFillObject,
+				justifyContent: 'center',
+				paddingTop: this.paddingTop,
+				paddingHorizontal: this.paddingHorizontal,
+			},
+			backButton: {
+				wrapper: {
+					width: this.deviceWidth * 0.130666667 + 3,
+					height: this.deviceWidth * 0.036 + 3,
+					flexDirection: 'row',
+					alignItems: 'center',
+				},
+				image: {
+					width: this.deviceWidth * 0.022666667,
+					height: this.deviceWidth * 0.036,
+				},
+				text: {
+					color: '#fff',
+					marginLeft: this.deviceWidth * 0.026666667,
+					fontSize: this.deviceWidth * 0.037333333,
+				},
 			},
 		};
 	}
@@ -271,20 +305,18 @@ export default class HeaderComponent extends Base {
 		const { rightButton } = this.props;
 
 		return (
-			<TouchableWithoutFeedback onPress={rightButton.onPress}>
-				<View
-					style={{
-						...StyleSheet.absoluteFillObject,
+			<TouchableOpacity
+				onPress={rightButton.onPress}
+				style={[
+					this.getInitialStyle().headerButton,
+					{
 						alignItems: 'flex-end',
-						justifyContent: 'center',
 						backgroundColor: 'transparent',
-						paddingTop: this.getInitialStyle().navbar.paddingTop,
-						paddingHorizontal: this.getInitialStyle().navbar.paddingHorizontal,
-					}}
-				>
-					{renderButtonContent()}
-				</View>
-			</TouchableWithoutFeedback>
+					},
+				]}
+			>
+				{renderButtonContent()}
+			</TouchableOpacity>
 		);
 
 		function renderButtonContent() {
@@ -297,14 +329,38 @@ export default class HeaderComponent extends Base {
 				return <Icon name={name} size={size} color={color}/>;
 			}
 			if (rightButton.title) {
-				return <Text>this.props.rightButton.title</Text>;
+				return <Text>{this.props.rightButton.title}</Text>;
 			}
 		}
 	}
 
 	render() {
+		const { goBack } = this.props;
+		const { headerButton, backButton } = this.getInitialStyle();
+
 		return (
 			<View {...this.prepareRootProps()} >
+				{
+					goBack ? (
+						<TouchableOpacity
+							onPress={goBack}
+							style={[
+								headerButton,
+								{ alignItems: 'flex-start' }
+							]}
+						>
+							<View style={backButton.wrapper}>
+								<Image
+									source={require('./img/keyboard-left-arrow-button.png')}
+									style={backButton.image}
+								/>
+								<Text style={backButton.text}>
+									Back
+								</Text>
+							</View>
+						</TouchableOpacity>
+					) : null
+				}
 				{this.renderChildren()}
 				{this.props.rightButton && this.renderRightButton()}
 			</View>
