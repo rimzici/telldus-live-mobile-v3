@@ -1,6 +1,7 @@
-# telldus-purple-internal
+# Telldus Live! mobile
 
-Internal dev repo for Telldus
+[![Dependency Status](https://david-dm.org/telldus/telldus-live-mobile-v3.svg)](https://david-dm.org/telldus/telldus-live-mobile-v3) [![devDependency Status](https://david-dm.org/telldus/telldus-live-mobile-v3/dev-status.svg)](https://david-dm.org/telldus/telldus-live-mobile-v3#info=devDependencies)
+[![Translation status](http://developer.telldus.com/translate/widgets/telldus-live-mobile/-/svg-badge.svg)](http://developer.telldus.com/translate/engage/telldus-live-mobile/?utm_source=widget)
 
 **Notes:**
 
@@ -65,7 +66,6 @@ module.exports = {
 
 **Valid keys:**
 
- - `version`: string - App version
  - `apiServer`: string - Telldus API server url e.g. https://api.telldus.com
  - `publicKey`: string - Telldus API public key
  - `privateKey`: string - Telldus API public key
@@ -114,8 +114,6 @@ You can access the developer menu by shaking your device or by selecting "Shake 
 - until this is automated with a release script, change the version in the following places:
   - `package.json`: `version` (semver)
   - `android/app/build.gradle`: `versionCode` (Android) and `versionName` (semver)
-  - `android/app/src/main/AndroidManifest.xml`: `versionCode` (Android) and `versionName` (semver)
-  - `js/App/Components/DetailViews/SettingsDetailModal.js`: `'You are using version <semver> of Telldus Live! mobile.'`
 
 ### Android
 

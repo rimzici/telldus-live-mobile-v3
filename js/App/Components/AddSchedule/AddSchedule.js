@@ -139,6 +139,11 @@ class AddSchedule extends View {
 				},
 			},
 		};
+
+		this.backButton = {
+			back: true,
+			onPress: this.goBack,
+		};
 	}
 
 	goBack = () => {
@@ -165,12 +170,12 @@ class AddSchedule extends View {
 	};
 
 	render() {
-		const { bgImage, backButton, header } = this.styles;
+		const { bgImage, header } = this.styles;
 		const { index } = this.props;
 
 		return (
 			<View>
-				<Header goBack={this.goBack}/>
+				<Header leftButton={this.backButton}/>
 				<View style={bgImage.mask}>
 					<Image
 						source={require('./img/telldus-geometric-header-bg.png')}

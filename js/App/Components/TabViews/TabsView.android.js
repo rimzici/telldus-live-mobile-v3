@@ -27,7 +27,7 @@ import React from 'react';
 import { StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { connect } from 'react-redux';
 
-import { Text, View, Icon, Image } from 'BaseComponents';
+import { Text, View, Icon, Image, Header } from 'BaseComponents';
 
 import DrawerLayoutAndroid from 'DrawerLayoutAndroid';
 import ExtraDimensions from 'react-native-extra-dimensions-android';
@@ -104,6 +104,46 @@ const NavigationView = ({ gateways, userProfile, onOpenSetting }) => {
 	);
 };
 
+const RouteConfigs = {
+	Dashboard: {
+		screen: TabViews.Dashboard,
+	},
+	Devices: {
+		screen: TabViews.Devices,
+	},
+	Sensors: {
+		screen: TabViews.Sensors,
+	},
+	Scheduler: {
+		screen: TabViews.Scheduler,
+	},
+};
+
+const TabNavigatorConfig = {
+	initialRouteName: 'Dashboard',
+	swipeEnabled: true,
+	lazy: true,
+	animationEnabled: true,
+	tabBarOptions: {
+		activeTintColor: '#fff',
+		indicatorStyle: {
+			backgroundColor: '#fff',
+		},
+		scrollEnabled: true,
+		labelStyle: {
+			fontSize: Dimensions.get('window').width / 35,
+		},
+		tabStyle: {
+			width: Dimensions.get('window').width / 3.5,
+		},
+		style: {
+			backgroundColor: Theme.Core.brandPrimary,
+		},
+	},
+};
+
+const Tabs = TabNavigator(RouteConfigs, TabNavigatorConfig);
+
 type Props = {
 	dashboard: Object,
 	tab: string,
@@ -167,6 +207,24 @@ class TabsView extends View {
 			},
 		};
 
+		this.starButton = {
+			icon: {
+				name: 'star',
+				size: 22,
+				color: '#fff',
+			},
+			onPress: this.toggleEditMode,
+		};
+
+		this.menuButton = {
+			icon: {
+				name: 'bars',
+				size: 22,
+				color: '#fff',
+			},
+			onPress: this.openDrawer,
+		};
+
 		this.state = {
 			settings: false,
 			routeName: '',
@@ -178,7 +236,6 @@ class TabsView extends View {
 		this.onTabSelect = this.onTabSelect.bind(this);
 		this.onRequestChangeTab = this.onRequestChangeTab.bind(this);
 		this.toggleEditMode = this.toggleEditMode.bind(this);
-		this.openDrawer = this.openDrawer.bind(this);
 		this.onNavigationStateChange = this.onNavigationStateChange.bind(this);
 	}
 
@@ -216,10 +273,10 @@ class TabsView extends View {
 		this.onRequestChangeTab(index);
 	}
 
-	openDrawer() {
+	openDrawer = () => {
 		this.refs.drawer.openDrawer();
 		this.props.syncGateways();
-	}
+	};
 
 	renderNavigationView() {
 		return <NavigationView
@@ -229,6 +286,10 @@ class TabsView extends View {
 			onOpenSetting={this.onOpenSetting}
 		/>;
 	}
+
+	makeRightButton = routeName => {
+		return (routeName === 'Devices' || routeName === 'Sensors') ? this.starButton : null;
+	};
 
 	goAddSchedule = () => {
 		this.props.navigation.navigate('AddSchedule');
@@ -241,6 +302,8 @@ class TabsView extends View {
 
 		const { routeName } = this.state;
 
+		const rightButton = this.makeRightButton(routeName);
+
 		// TODO: Refactor: Split this code to smaller components
 		return (
 			<DrawerLayoutAndroid
@@ -250,48 +313,7 @@ class TabsView extends View {
 				renderNavigationView={this.renderNavigationView}
 			>
 				<View style={{ flex: 1 }}>
-					<View style={{
-						height: ExtraDimensions.get('STATUS_BAR_HEIGHT'),
-						backgroundColor: Theme.Core.brandPrimary,
-					}}
-					/>
-					{
-						this.props.tab === 'devicesTab' || this.props.tab === 'sensorsTab' ? (
-							<Icon.ToolbarAndroid
-								style={{
-									height: 56,
-									backgroundColor: Theme.Core.brandPrimary,
-								}}
-								titleColor={Theme.Core.inverseTextColor}
-								navIconName="bars"
-								overflowIconName="star"
-								iconColor={Theme.Core.inverseTextColor}
-								title="Telldus Live!"
-								actions={[
-									{
-										title: 'Settings',
-										icon: this.state.starIcon,
-										show: 'always',
-									},
-								]}
-								onActionSelected={this.toggleEditMode}
-								onIconClicked={this.openDrawer}
-							/>
-						) : (
-							<Icon.ToolbarAndroid
-								style={{
-									height: 56,
-									backgroundColor: Theme.Core.brandPrimary,
-								}}
-								titleColor={Theme.Core.inverseTextColor}
-								navIconName="bars"
-								overflowIconName="star"
-								iconColor={Theme.Core.inverseTextColor}
-								title="Telldus Live!"
-								onIconClicked={this.openDrawer}
-							/>
-						)
-					}
+					<Header leftButton={this.menuButton} rightButton={rightButton}/>
 					<View>
 						<Tabs onNavigationStateChange={this.onNavigationStateChange}/>
 						{
@@ -320,9 +342,9 @@ class TabsView extends View {
 		);
 	}
 
-	toggleEditMode(position) {
+	toggleEditMode = () => {
 		this.props.onToggleEditMode(this.props.tab);
-	}
+	};
 }
 
 const styles = StyleSheet.create({
@@ -408,44 +430,5 @@ function mapDispatchToProps(dispatch) {
 		dispatch,
 	};
 }
-
-const Tabs = TabNavigator(
-	{
-		Dashboard: {
-			screen: TabViews.Dashboard,
-		},
-		Devices: {
-			screen: TabViews.Devices,
-		},
-		Sensors: {
-			screen: TabViews.Sensors,
-		},
-		Scheduler: {
-			screen: TabViews.Scheduler,
-		},
-		Gateways: {
-			screen: TabViews.Gateways,
-		},
-	},
-	{
-		initialRouteName: 'Dashboard',
-		swipeEnabled: true,
-		lazy: true,
-		animationEnabled: true,
-		tabBarOptions: {
-			activeTintColor: '#fff',
-			indicatorStyle: {
-				backgroundColor: '#fff',
-			},
-			scrollEnabled: true,
-			labelStyle: {
-				fontSize: Dimensions.get('window').width / 35,
-			},
-			style: {
-				backgroundColor: Theme.Core.brandPrimary,
-			},
-		},
-	}
-);
 
 module.exports = connect(mapStateToProps, mapDispatchToProps)(TabsView);
