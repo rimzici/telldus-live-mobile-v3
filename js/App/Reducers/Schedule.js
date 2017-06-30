@@ -16,31 +16,48 @@
  * You should have received a copy of the GNU General Public License
  * along with Telldus Live! app.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @providesModule Actions_AddSchedule
+ * @providesModule Reducers_Schedule
  */
 
 // @flow
 
 'use strict';
 
-import type { Action } from './Types';
+import type { Action } from 'Actions_Types';
+import { SCHEDULE_SELECT_DEVICE, SCHEDULE_EDIT_RESET, SCHEDULE_SELECT_ACTION } from 'Actions_Types';
 
-const selectDevice = (device): Action => ({
-	type: 'ADD_SCHEDULE_SELECT_DEVICE',
-	payload: device,
-});
-
-const selectAction = (action): Action => ({
-	type: 'ADD_SCHEDULE_SELECT_ACTION',
-	payload: action,
-});
-
-const reset = (): Action => ({
-	type: 'ADD_SCHEDULE_RESET',
-});
-
-module.exports = {
-	selectDevice,
-	selectAction,
-	reset,
+const initialState = {
+	id: 0,
+	deviceId: 0,
+	method: 0,
+	type: '',
+	hour: 0,
+	minute: 0,
+	offset: 0,
+	randomInterval: 0,
+	active: true,
+	weekdays: [],
 };
+
+export default function scheduleReducer(state = initialState, action) {
+	switch (action.type) {
+		case SCHEDULE_SELECT_DEVICE:
+			return {
+				...state,
+				id: 0,
+				deviceId: action.payload.deviceId,
+			};
+
+		case SCHEDULE_SELECT_ACTION:
+			return {
+				...state,
+				method: action.payload.method,
+			};
+
+		case SCHEDULE_EDIT_RESET:
+			return initialState;
+
+		default:
+			return state;
+	}
+}

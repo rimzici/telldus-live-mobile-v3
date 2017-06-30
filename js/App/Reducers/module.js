@@ -36,7 +36,7 @@ import Dimmer from './Dimmer';
 import Jobs from './Jobs';
 import LiveApi from './LiveApi';
 import Websockets from './Websockets';
-import AddSchedule from './AddSchedule';
+import Schedule from './Schedule';
 
 module.exports = combineReducers({
 	devices: Devices,
@@ -50,5 +50,5 @@ module.exports = combineReducers({
 	jobs: Jobs,
 	liveApi: LiveApi,
 	websockets: Websockets,
-	addSchedule: AddSchedule,
+	schedule: Schedule,
 });

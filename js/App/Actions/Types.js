@@ -21,6 +21,10 @@
 // @flow
 'use strict';
 
+export const SCHEDULE_SELECT_DEVICE = 'SCHEDULE_SELECT_DEVICE';
+export const SCHEDULE_EDIT_RESET = 'SCHEDULE_EDIT_RESET';
+export const SCHEDULE_SELECT_ACTION = 'SCHEDULE_SELECT_ACTION';
+
 export type Action =
 	  { type: 'LOGGED_IN' }
 	| { type: 'RECEIVED_ACCESS_TOKEN', accessToken: Object }
@@ -71,9 +75,9 @@ export type Action =
 	| { type: 'REQUEST_TURNON', payload: Object }
 	| { type: 'REQUEST_TURNOFF', payload: Object }
 
-	| { type: 'ADD_SCHEDULE_SELECT_DEVICE', payload: Object }
-	| { type: 'ADD_SCHEDULE_RESET' }
-	| { type: 'ADD_SCHEDULE_SELECT_ACTION', payload: Object }
+	| { type: SCHEDULE_SELECT_DEVICE, payload: Object }
+	| { type: SCHEDULE_EDIT_RESET }
+	| { type: SCHEDULE_SELECT_ACTION, payload: Object }
 	;
 
 export type Dispatch = (action: Action | ThunkAction | PromiseAction | Array<Action>) => any;

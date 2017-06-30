@@ -25,7 +25,7 @@ import React from 'react';
 import { connect } from 'react-redux';
 import { Dimensions } from 'react-native';
 import { View, ListDataSource, List, Text } from 'BaseComponents';
-import { selectAction } from 'Actions_AddSchedule';
+import { selectAction } from 'Actions_Schedule';
 import Row from './Row';
 import Theme from 'Theme';
 
@@ -33,6 +33,7 @@ const actions = [
 	{
 		name: 'On',
 		description: 'Turns the device on',
+		method: 1,
 		bgColor: Theme.Core.brandSecondary,
 		textColor: Theme.Core.brandSecondary,
 		icon: 'on',
@@ -40,6 +41,7 @@ const actions = [
 	{
 		name: 'Off',
 		description: 'Turns the device off',
+		method: 2,
 		bgColor: '#999',
 		textColor: '#999',
 		icon: 'off',
@@ -47,6 +49,7 @@ const actions = [
 	{
 		name: 'Dim',
 		description: 'Dims the device',
+		method: 16,
 		bgColor: 'rgba(226, 105, 1, 0.80)',
 		textColor: Theme.Core.brandSecondary,
 		icon: 'dim',
@@ -85,7 +88,7 @@ class Action extends View {
 	};
 
 	selectAction = action => {
-		this.props.selectAction(action);
+		this.props.selectAction(action.method);
 		this.props.goNext();
 	};
 
@@ -120,7 +123,7 @@ Action.propTypes = {
 const mapStateToProps = (state) => ({});
 
 const mapDispatchToProps = dispatch => ({
-	selectAction: action => dispatch(selectAction(action)),
+	selectAction: method => dispatch(selectAction(method)),
 });
 
 module.exports = connect(mapStateToProps, mapDispatchToProps)(Action);

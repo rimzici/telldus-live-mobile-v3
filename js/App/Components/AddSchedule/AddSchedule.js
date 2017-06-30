@@ -26,7 +26,7 @@ import { connect } from 'react-redux';
 import { TouchableOpacity, Image, Dimensions } from 'react-native';
 import { NavigationActions } from 'react-navigation';
 import { View, Text, Header } from 'BaseComponents';
-import { reset } from 'Actions_AddSchedule';
+import { reset } from 'Actions_Schedule';
 
 import Device from './Device';
 import Action from './Action';

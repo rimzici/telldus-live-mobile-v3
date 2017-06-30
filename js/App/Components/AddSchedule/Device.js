@@ -26,7 +26,7 @@ import { connect } from 'react-redux';
 import { Dimensions } from 'react-native';
 import { View, ListDataSource, List } from 'BaseComponents';
 import { getDevices } from 'Actions_Devices';
-import { selectDevice } from 'Actions_AddSchedule';
+import { selectDevice } from 'Actions_Schedule';
 import Theme from 'Theme';
 import Row from './Row';
 
@@ -72,7 +72,7 @@ class Device extends View {
 	};
 
 	selectDevice = device => {
-		this.props.selectDevice(device);
+		this.props.selectDevice(device.id);
 		this.props.goNext();
 	};
 
@@ -124,7 +124,7 @@ const mapStateToProps = ({ devices }) => (
 const mapDispatchToProps = dispatch => (
 	{
 		getDevices: () => dispatch(getDevices()),
-		selectDevice: device => dispatch(selectDevice(device)),
+		selectDevice: deviceId => dispatch(selectDevice(deviceId)),
 	}
 );
 
