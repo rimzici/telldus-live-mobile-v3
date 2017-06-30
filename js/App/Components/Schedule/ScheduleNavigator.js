@@ -27,28 +27,29 @@ import React from 'react';
 import { StackNavigator } from 'react-navigation';
 import AddSchedule from './AddSchedule';
 
-const ScheduleNavigator = StackNavigator(
-	{
-		Device: {
-			screen: ({ navigation }) => <AddSchedule index={0} navigation={navigation}/>,
-		},
-		Action: {
-			screen: ({ navigation }) => <AddSchedule index={1} navigation={navigation}/>,
-		},
-		Time: {
-			screen: ({ navigation }) => <AddSchedule index={2} navigation={navigation}/>,
-		},
-		Days: {
-			screen: ({ navigation }) => <AddSchedule index={3} navigation={navigation}/>,
-		},
-		Summary: {
-			screen: ({ navigation }) => <AddSchedule index={4} navigation={navigation}/>,
-		},
+const RouteConfigs = {
+	Device: {
+		screen: ({ navigation }) => <AddSchedule index={0} navigation={navigation}/>,
 	},
-	{
-		initialRouteName: 'Device',
-		headerMode: 'none',
-	}
-);
+	Action: {
+		screen: ({ navigation }) => <AddSchedule index={1} navigation={navigation}/>,
+	},
+	Time: {
+		screen: ({ navigation }) => <AddSchedule index={2} navigation={navigation}/>,
+	},
+	Days: {
+		screen: ({ navigation }) => <AddSchedule index={3} navigation={navigation}/>,
+	},
+	Summary: {
+		screen: ({ navigation }) => <AddSchedule index={4} navigation={navigation}/>,
+	},
+};
+
+const StackNavigatorConfig = {
+	initialRouteName: 'Device',
+	headerMode: 'none',
+};
+
+const ScheduleNavigator = StackNavigator(RouteConfigs, StackNavigatorConfig);
 
 module.exports = ScheduleNavigator;

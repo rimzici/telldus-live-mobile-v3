@@ -57,9 +57,7 @@ const RouteConfigs = {
 
 const StackNavigatorConfig = {
 	initialRouteName: 'Tabs',
-	navigationOptions: {
-		header: null,
-	},
+	headerMode: 'none',
 };
 
 const Navigator = StackNavigator(RouteConfigs, StackNavigatorConfig);
