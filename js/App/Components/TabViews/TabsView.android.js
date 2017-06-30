@@ -27,7 +27,7 @@ import React from 'react';
 import { StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { connect } from 'react-redux';
 
-import { Text, View, Icon, Image, Header } from 'BaseComponents';
+import { Text, View, Icon, Image, Header, FloatingButton } from 'BaseComponents';
 
 import DrawerLayoutAndroid from 'DrawerLayoutAndroid';
 import ExtraDimensions from 'react-native-extra-dimensions-android';
@@ -177,36 +177,6 @@ class TabsView extends View {
 	constructor(props: Props) {
 		super(props);
 
-		this.deviceWidth = Dimensions.get('window').width;
-
-		this.addButtonSize = this.deviceWidth * 0.134666667;
-		this.addButtonOffset = this.deviceWidth * 0.034666667;
-		this.addButtonTextSize = this.deviceWidth * 0.056;
-
-		this.styles = {
-			addButton: {
-				container: {
-					backgroundColor: Theme.Core.brandSecondary,
-					borderRadius: 50,
-					position: 'absolute',
-					height: this.addButtonSize,
-					width: this.addButtonSize,
-					bottom: this.addButtonOffset,
-					right: this.addButtonOffset,
-					elevation: 2,
-				},
-				wrapper: {
-					flex: 1,
-					alignItems: 'center',
-					justifyContent: 'center',
-				},
-			},
-			iconPlus: {
-				width: this.addButtonTextSize,
-				height: this.addButtonTextSize,
-			},
-		};
-
 		this.starButton = {
 			icon: {
 				name: 'star',
@@ -316,21 +286,12 @@ class TabsView extends View {
 					<Header leftButton={this.menuButton} rightButton={rightButton}/>
 					<View>
 						<Tabs onNavigationStateChange={this.onNavigationStateChange}/>
-						{
-							routeName === 'Scheduler' ? (
-								<TouchableOpacity
-									style={this.styles.addButton.container}
-									onPress={this.goAddSchedule}
-								>
-									<View style={this.styles.addButton.wrapper}>
-										<Image
-											source={require('./img/iconPlus.png')}
-											style={this.styles.iconPlus}
-										/>
-									</View>
-								</TouchableOpacity>
-							) : null
-						}
+						{routeName === 'Scheduler' && (
+							<FloatingButton
+								onPress={this.goAddSchedule}
+								imageSource={require('./img/iconPlus.png')}
+							/>
+						)}
 						{
 							this.state.settings ? (
 								<SettingsDetailModal isVisible={true} onClose={this.onCloseSetting}/>
