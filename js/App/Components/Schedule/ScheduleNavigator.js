@@ -25,23 +25,35 @@
 
 import React from 'react';
 import { StackNavigator } from 'react-navigation';
-import AddSchedule from './AddSchedule';
+import ScheduleScreen from './ScheduleScreen';
+
+import Device from './Device';
+import Action from './Action';
+import Time from './Time';
+import Days from './Days';
+import Summary from './Summary';
+
+const renderScheduleScreen = navigation => Component => (
+	<ScheduleScreen navigation={navigation}>
+		<Component/>
+	</ScheduleScreen>
+);
 
 const RouteConfigs = {
 	Device: {
-		screen: ({ navigation }) => <AddSchedule index={0} navigation={navigation}/>,
+		screen: ({ navigation }) => renderScheduleScreen(navigation)(Device),
 	},
 	Action: {
-		screen: ({ navigation }) => <AddSchedule index={1} navigation={navigation}/>,
+		screen: ({ navigation }) => renderScheduleScreen(navigation)(Action),
 	},
 	Time: {
-		screen: ({ navigation }) => <AddSchedule index={2} navigation={navigation}/>,
+		screen: ({ navigation }) => renderScheduleScreen(navigation)(Time),
 	},
 	Days: {
-		screen: ({ navigation }) => <AddSchedule index={3} navigation={navigation}/>,
+		screen: ({ navigation }) => renderScheduleScreen(navigation)(Days),
 	},
 	Summary: {
-		screen: ({ navigation }) => <AddSchedule index={4} navigation={navigation}/>,
+		screen: ({ navigation }) => renderScheduleScreen(navigation)(Summary),
 	},
 };
 

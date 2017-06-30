@@ -187,7 +187,7 @@ class TabsView extends View {
 	};
 
 	goAddSchedule = () => {
-		this.props.navigation.navigate('AddSchedule');
+		this.props.navigation.navigate('Schedule');
 	};
 
 	makeRightButton = routeName => {

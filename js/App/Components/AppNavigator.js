@@ -50,7 +50,7 @@ const RouteConfigs = {
 	Tabs: {
 		screen: TabsView,
 	},
-	AddSchedule: {
+	Schedule: {
 		screen: ScheduleNavigator,
 	},
 };
