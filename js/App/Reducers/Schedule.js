@@ -30,6 +30,7 @@ const initialState = {
 	id: 0,
 	deviceId: 0,
 	method: 0,
+	methodValue: 0,
 	type: '',
 	hour: 0,
 	minute: 0,
@@ -52,6 +53,7 @@ export default function scheduleReducer(state = initialState, action) {
 			return {
 				...state,
 				method: action.payload.method,
+				methodValue: action.payload.methodValue,
 			};
 
 		case SCHEDULE_EDIT_RESET:

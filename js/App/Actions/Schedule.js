@@ -29,14 +29,15 @@ import { SCHEDULE_SELECT_DEVICE, SCHEDULE_SELECT_ACTION, SCHEDULE_EDIT_RESET } f
 const selectDevice = (deviceId): Action => ({
 	type: SCHEDULE_SELECT_DEVICE,
 	payload: {
-		deviceId
+		deviceId,
 	},
 });
 
-const selectAction = (method): Action => ({
+const selectAction = (method, methodValue = 0): Action => ({
 	type: SCHEDULE_SELECT_ACTION,
 	payload: {
-		method
+		method,
+		methodValue,
 	},
 });
 
