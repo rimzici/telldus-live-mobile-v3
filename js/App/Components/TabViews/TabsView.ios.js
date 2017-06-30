@@ -183,6 +183,7 @@ class TabsView extends View {
 					<FloatingButton
 						onPress={this.goAddSchedule}
 						imageSource={require('./img/iconPlus.png')}
+					    tabs={true}
 					/>
 				)}
 				{
