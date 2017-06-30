@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with Telldus Live! app.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @providesModule AddScheduleNavigator
+ * @providesModule ScheduleNavigator
  */
 
 // @flow
@@ -24,12 +24,10 @@
 'use strict';
 
 import React from 'react';
-import { Button } from 'react-native';
 import { StackNavigator } from 'react-navigation';
 import AddSchedule from './AddSchedule';
-import { Header } from 'BaseComponents';
 
-const AddScheduleNavigator = StackNavigator(
+const ScheduleNavigator = StackNavigator(
 	{
 		Device: {
 			screen: ({ navigation }) => <AddSchedule index={0} navigation={navigation}/>,
@@ -53,4 +51,4 @@ const AddScheduleNavigator = StackNavigator(
 	}
 );
 
-module.exports = AddScheduleNavigator;
+module.exports = ScheduleNavigator;

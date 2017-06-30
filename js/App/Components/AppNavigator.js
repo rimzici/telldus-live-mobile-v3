@@ -42,7 +42,7 @@ import TabsView from 'TabsView';
 import StatusBar from 'StatusBar';
 import Orientation from 'react-native-orientation';
 import { DimmerPopup } from 'TabViews_SubViews';
-import AddScheduleNavigator from 'AddScheduleNavigator';
+import ScheduleNavigator from 'ScheduleNavigator';
 
 import { getUserProfile as getUserProfileSelector } from '../Reducers/User';
 
@@ -51,7 +51,7 @@ const RouteConfigs = {
 		screen: TabsView,
 	},
 	AddSchedule: {
-		screen: AddScheduleNavigator,
+		screen: ScheduleNavigator,
 	},
 };
 
