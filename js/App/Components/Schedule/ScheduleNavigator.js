@@ -29,6 +29,7 @@ import ScheduleScreen from './ScheduleScreen';
 
 import Device from './Device';
 import Action from './Action';
+import ActionDim from './ActionDim';
 import Time from './Time';
 import Days from './Days';
 import Summary from './Summary';
@@ -45,6 +46,9 @@ const RouteConfigs = {
 	},
 	Action: {
 		screen: ({ navigation }) => renderScheduleScreen(navigation)(Action),
+	},
+	ActionDim: {
+		screen: ({ navigation }) => renderScheduleScreen(navigation)(ActionDim),
 	},
 	Time: {
 		screen: ({ navigation }) => renderScheduleScreen(navigation)(Time),
