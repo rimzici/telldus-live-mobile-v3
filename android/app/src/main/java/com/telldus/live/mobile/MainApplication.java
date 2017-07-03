@@ -22,6 +22,7 @@ package com.telldus.live.mobile.test;
 import android.app.Application;
 import android.util.Log;
 
+import com.facebook.react.BuildConfig;
 import com.facebook.react.ReactApplication;
 import com.dieam.reactnativepushnotification.ReactNativePushNotificationPackage;
 import com.facebook.react.ReactInstanceManager;
