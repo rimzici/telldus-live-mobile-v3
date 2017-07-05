@@ -57,6 +57,7 @@ import NavigatorIOS from './NavigatorIOS';
 import I18n from './I18n';
 import Gravatar from './Gravatar';
 import FloatingButton from './FloatingButton';
+import Slider from './Slider';
 
 import {
 	AppState,
@@ -105,6 +106,7 @@ module.exports = {
 	ProgressBar: ProgressBar,
 	Tabs: ScrollableTabView,
 	FloatingButton,
+	Slider,
 
 	AppState: AppState,
 	Dimensions: Dimensions,
