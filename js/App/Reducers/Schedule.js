@@ -24,7 +24,12 @@
 'use strict';
 
 import type { Action } from 'Actions_Types';
-import { SCHEDULE_SELECT_DEVICE, SCHEDULE_EDIT_RESET, SCHEDULE_SELECT_ACTION } from 'Actions_Types';
+import {
+	SCHEDULE_SELECT_DEVICE,
+	SCHEDULE_EDIT_RESET,
+	SCHEDULE_SELECT_ACTION,
+	SCHEDULE_SELECT_TIME,
+} from 'Actions_Types';
 
 const initialState = {
 	id: 0,
@@ -58,6 +63,13 @@ export default function scheduleReducer(state = initialState, action) {
 
 		case SCHEDULE_EDIT_RESET:
 			return initialState;
+
+		case SCHEDULE_SELECT_TIME:
+			return {
+				...state,
+				type: action.payload.type,
+				...action.payload.time,
+			};
 
 		default:
 			return state;

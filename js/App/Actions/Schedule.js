@@ -24,7 +24,19 @@
 'use strict';
 
 import type { Action } from './Types';
-import { SCHEDULE_SELECT_DEVICE, SCHEDULE_SELECT_ACTION, SCHEDULE_EDIT_RESET } from './Types';
+import {
+	SCHEDULE_SELECT_DEVICE,
+	SCHEDULE_SELECT_ACTION,
+	SCHEDULE_SELECT_TIME,
+	SCHEDULE_EDIT_RESET,
+} from './Types';
+
+type Time = {
+	hour?: number,
+	minute?: number,
+	offset?: number,
+	randomInterval?: number,
+};
 
 const selectDevice = (deviceId): Action => ({
 	type: SCHEDULE_SELECT_DEVICE,
@@ -41,6 +53,14 @@ const selectAction = (method, methodValue = 0): Action => ({
 	},
 });
 
+const selectTime = (type: string, time: Time): Action => ({
+	type: SCHEDULE_SELECT_TIME,
+	payload: {
+		type,
+		time,
+	},
+});
+
 const reset = (): Action => ({
 	type: SCHEDULE_EDIT_RESET,
 });
@@ -48,5 +68,6 @@ const reset = (): Action => ({
 module.exports = {
 	selectDevice,
 	selectAction,
+	selectTime,
 	reset,
 };

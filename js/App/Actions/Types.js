@@ -24,6 +24,7 @@
 export const SCHEDULE_SELECT_DEVICE = 'SCHEDULE_SELECT_DEVICE';
 export const SCHEDULE_EDIT_RESET = 'SCHEDULE_EDIT_RESET';
 export const SCHEDULE_SELECT_ACTION = 'SCHEDULE_SELECT_ACTION';
+export const SCHEDULE_SELECT_TIME = 'SCHEDULE_SELECT_TIME';
 
 export type Action =
 	  { type: 'LOGGED_IN' }
@@ -78,6 +79,7 @@ export type Action =
 	| { type: SCHEDULE_SELECT_DEVICE, payload: Object }
 	| { type: SCHEDULE_EDIT_RESET }
 	| { type: SCHEDULE_SELECT_ACTION, payload: Object }
+	| { type: SCHEDULE_SELECT_TIME, payload: Object }
 	;
 
 export type Dispatch = (action: Action | ThunkAction | PromiseAction | Array<Action>) => any;
