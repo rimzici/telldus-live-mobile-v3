@@ -33,6 +33,7 @@ import Subtitle from './Subtitle';
 import _ from 'lodash';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import ExtraDimensions from 'react-native-extra-dimensions-android';
+import Theme from 'Theme';
 
 type Props = {
 	children: Object,
@@ -117,6 +118,7 @@ export default class HeaderComponent extends Base {
 					color: '#fff',
 					marginLeft: this.deviceWidth * 0.026666667,
 					fontSize: this.deviceWidth * 0.037333333,
+					fontFamily: Theme.Core.fonts.robotoLight,
 				},
 			},
 		};
