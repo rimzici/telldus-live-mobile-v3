@@ -58,6 +58,7 @@ import I18n from './I18n';
 import Gravatar from './Gravatar';
 import FloatingButton from './FloatingButton';
 import Slider from './Slider';
+import CheckboxSolid from './CheckboxSolid';
 
 import {
 	AppState,
@@ -107,6 +108,7 @@ module.exports = {
 	Tabs: ScrollableTabView,
 	FloatingButton,
 	Slider,
+	CheckboxSolid,
 
 	AppState: AppState,
 	Dimensions: Dimensions,
