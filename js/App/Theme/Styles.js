@@ -100,16 +100,4 @@ export default StyleSheet.create({
 		justifyContent: 'flex-start',
 		alignItems: 'center',
 	},
-	scheduleRow: {
-		backgroundColor: '#fff',
-		borderRadius: 2,
-		elevation: 2,
-		shadowOffset: {
-			width: 0,
-			height: 2,
-		},
-		shadowRadius: 2,
-		shadowColor: '#000',
-		shadowOpacity: 0.23,
-	},
 });
