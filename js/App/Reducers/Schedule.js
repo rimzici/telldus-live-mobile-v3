@@ -50,7 +50,7 @@ type State = {
 	offset: number,
 	randomInterval: number,
 	active: boolean,
-	weekdays: string[],
+	weekdays: number[],
 };
 
 export default function scheduleReducer(state: State = initialState, action: Action): State {
@@ -77,6 +77,12 @@ export default function scheduleReducer(state: State = initialState, action: Act
 				...state,
 				type: action.payload.type,
 				...action.payload.time,
+			};
+
+		case 'SCHEDULE_SELECT_DAYS':
+			return {
+				...state,
+				weekdays: action.payload.weekdays,
 			};
 
 		default:
