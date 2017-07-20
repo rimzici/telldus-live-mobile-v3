@@ -59,6 +59,7 @@ import Gravatar from './Gravatar';
 import FloatingButton from './FloatingButton';
 import Slider from './Slider';
 import CheckboxSolid from './CheckboxSolid';
+import IconTelldus from './IconTelldus';
 
 import {
 	AppState,
@@ -109,6 +110,7 @@ module.exports = {
 	FloatingButton,
 	Slider,
 	CheckboxSolid,
+	IconTelldus,
 
 	AppState: AppState,
 	Dimensions: Dimensions,
