@@ -19,7 +19,7 @@
  * @providesModule Constants
  */
 
-export default {
+module.exports = {
 	supportedMethods: 951,
 	methods: {
 		1: 'TURNON',
@@ -35,4 +35,5 @@ export default {
 		1024: 'RGBW',
 		2048: 'THERMOSTAT',
 	},
+	DAYS: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
 };
