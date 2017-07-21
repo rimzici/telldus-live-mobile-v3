@@ -35,6 +35,7 @@ import {
 } from 'Actions';
 import { authenticateSession, connectToGateways } from 'Actions_Websockets';
 import { getDevices } from 'Actions_Devices';
+import { resetSchedule } from 'Actions_Schedule';
 
 import { View, Header } from 'BaseComponents';
 import Platform from 'Platform';
@@ -117,6 +118,7 @@ class AppNavigator extends View {
 		this.props.dispatch(getGateways());
 		this.props.dispatch(getSensors());
 		this.props.dispatch(getJobs());
+		this.props.dispatch(resetSchedule());
 	}
 
 	_updateSpecificOrientation = specificOrientation => {

@@ -72,7 +72,7 @@ export type Action =
 	| { type: 'REQUEST_TURNOFF', payload: Object }
 
 	| { type: 'SCHEDULE_SELECT_DEVICE', payload: Object }
-	| { type: 'SCHEDULE_EDIT_RESET' }
+	| { type: 'SCHEDULE_RESET' }
 	| { type: 'SCHEDULE_SELECT_ACTION', payload: Object }
 	| { type: 'SCHEDULE_SELECT_TIME', payload: Object }
 	| { type: 'SCHEDULE_SELECT_DAYS', payload: Object }
