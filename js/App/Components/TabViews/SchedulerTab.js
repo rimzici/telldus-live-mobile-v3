@@ -21,11 +21,11 @@
 
 'use strict';
 
-import React from 'react';
+import React, { PropTypes } from 'react';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
 
-import { List, ListDataSource, View, Text, I18n } from 'BaseComponents';
+import { I18n, List, ListDataSource, Text, View } from 'BaseComponents';
 import { JobRow } from 'TabViews_SubViews';
 import { getJobs } from 'Actions';
 import Theme from 'Theme';
@@ -35,6 +35,10 @@ import moment from 'moment-timezone';
 import { parseJobsForListView } from 'Reducers_Jobs';
 
 import getTabBarIcon from '../../Lib/getTabBarIcon';
+
+type NavigationParams = {
+	focused: boolean, tintColor: string,
+};
 
 type Props = {
 	rowsAndSections: Object,
@@ -48,14 +52,18 @@ type State = {
 
 const daysInWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-class SchedulerTab extends View {
+class SchedulerTab extends View<null, Props, State> {
 
-	props: Props;
-	state: State;
+	static propTypes = {
+		rowsAndSections: PropTypes.object,
+	};
 
-	renderRow: (Object) => Object;
-	renderSectionHeader: (sectionData: Object, sectionId: number) => Object;
-	onRefresh: () => void;
+	static navigationOptions = {
+		title: I18n.t('pages.scheduler'),
+		tabBarIcon: ({ focused, tintColor }: NavigationParams): Object => {
+			return getTabBarIcon(focused, tintColor, 'scheduler');
+		},
+	};
 
 	constructor(props: Props) {
 		super(props);
@@ -64,13 +72,13 @@ class SchedulerTab extends View {
 
 		this.state = {
 			dataSource: new ListDataSource({
-				rowHasChanged: this.rowHasChanged,
-				sectionHeaderHasChanged: (s1, s2) => s1 !== s2,
+				rowHasChanged: this._rowHasChanged,
+				sectionHeaderHasChanged: (s1: Object, s2: Object): boolean => s1 !== s2,
 			}).cloneWithRowsAndSections(sections, sectionIds),
 		};
 	}
 
-	componentWillReceiveProps(nextProps) {
+	componentWillReceiveProps(nextProps: Props) {
 		const { sections, sectionIds } = nextProps.rowsAndSections;
 
 		this.setState({
@@ -82,32 +90,20 @@ class SchedulerTab extends View {
 		this.props.dispatch(getJobs());
 	};
 
-	rowHasChanged(r1, r2) {
-		if (r1 === r2) {
-			return false;
-		}
-		return (
-			r1.effectiveHour !== r2.effectiveHour ||
-			r1.effectiveMinute !== r2.effectiveMinute ||
-			r1.method !== r2.method ||
-			r1.deviceId !== r2.deviceId
-		);
-	}
-
 	render() {
 		return (
 			<View>
 				<List
 					dataSource={this.state.dataSource}
-					renderRow={this.renderRow}
-					renderSectionHeader={this.renderSectionHeader}
+					renderRow={this._renderRow}
+					renderSectionHeader={this._renderSectionHeader}
 					onRefresh={this.onRefresh}
 				/>
 			</View>
 		);
 	}
 
-	renderSectionHeader = (sectionData, sectionId) => {
+	_renderSectionHeader = (sectionData: Object, sectionId: number): Object => {
 		// TODO: move to own Component
 		const todayInWeek = parseInt(moment().format('d'), 10);
 		const absoluteDayInWeek = (todayInWeek + sectionId) % 7;
@@ -132,48 +128,57 @@ class SchedulerTab extends View {
 		);
 	};
 
-	renderRow = props => {
+	_rowHasChanged = (r1: Object, r2: Object): boolean => {
+		if (r1 === r2) {
+			return false;
+		}
+
+		return (
+			r1.effectiveHour !== r2.effectiveHour ||
+			r1.effectiveMinute !== r2.effectiveMinute ||
+			r1.method !== r2.method ||
+			r1.deviceId !== r2.deviceId
+		);
+	};
+
+	_renderRow = (props: Object): Object => {
 		return (
 			<JobRow {...props} />
 		);
 	};
 }
 
-SchedulerTab.navigationOptions = {
-	title: I18n.t('pages.scheduler'),
-	tabBarIcon: ({ focused, tintColor }) => getTabBarIcon(focused, tintColor, 'scheduler'),
-};
-
-SchedulerTab.propTypes = {
-	rowsAndSections: React.PropTypes.object,
-};
-
 const getRowsAndSections = createSelector(
 	[
-		({ jobs }) => jobs,
-		({ gateways }) => gateways,
-		({ devices }) => devices,
+		({ jobs }: { jobs: Object[] }): Object[] => jobs,
+		({ gateways }: { gateways: Object }): Object => gateways,
+		({ devices }: { devices: Object }): Object => devices,
 	],
-	(jobs, gateways, devices) => {
+	(jobs: Object[], gateways: Object, devices: Object): Object => {
 		const { sections, sectionIds } = parseJobsForListView(jobs, gateways, devices);
 		return {
 			sections,
 			sectionIds,
 		};
-	}
+	},
 );
 
-function mapStateToProps(store) {
+type MapStateToPropsType = {
+	rowsAndSections: Function,
+	devices: Object,
+};
+
+const mapStateToProps = (store: Object): MapStateToPropsType => {
 	return {
 		rowsAndSections: getRowsAndSections(store),
 		devices: store.devices,
 	};
-}
+};
 
-function mapDispatchToProps(dispatch) {
+const mapDispatchToProps = (dispatch: Function): { dispatch: Function } => {
 	return {
 		dispatch,
 	};
-}
+};
 
 module.exports = connect(mapStateToProps, mapDispatchToProps)(SchedulerTab);
