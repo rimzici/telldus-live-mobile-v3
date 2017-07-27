@@ -61,6 +61,7 @@ import Slider from './Slider';
 import CheckboxSolid from './CheckboxSolid';
 import IconTelldus from './IconTelldus';
 import BlockIcon from './BlockIcon';
+import Poster from './Poster';
 
 import {
 	AppState,
@@ -113,6 +114,7 @@ module.exports = {
 	CheckboxSolid,
 	IconTelldus,
 	BlockIcon,
+	Poster,
 
 	AppState: AppState,
 	Dimensions: Dimensions,
