@@ -45,10 +45,14 @@ type Props = {
 	dispatch: Function,
 };
 
-class SchedulerTab extends View<null, Props, null> {
+type State = {
+	daysToRender: React$Element<any>[],
+};
+
+class SchedulerTab extends View<null, Props, State> {
 
 	static propTypes = {
-		rowsAndSections: PropTypes.object,
+		rowsAndSections: PropTypes.arrayOf(PropTypes.object),
 	};
 
 	static navigationOptions = {
@@ -58,39 +62,69 @@ class SchedulerTab extends View<null, Props, null> {
 		},
 	};
 
+	constructor(props: Props) {
+		super(props);
+
+		this.state = {
+			daysToRender: this._getDaysToRender(props.rowsAndSections.slice(0, 1)),
+		};
+	}
+
+	componentDidMount() {
+		setTimeout(() => {
+			const remainingDaysToRender = this._getDaysToRender(this.props.rowsAndSections.slice(1));
+			const daysToRender = this.state.daysToRender.concat(remainingDaysToRender);
+			this.setState({ daysToRender });
+		});
+	}
+
+	componentWillReceiveProps(nextProps: Props) {
+		const { rowsAndSections } = nextProps;
+		const daysToRender = this._getDaysToRender(rowsAndSections);
+		this.setState({ daysToRender });
+	}
+
 	onRefresh = () => {
 		this.props.dispatch(getJobs());
 	};
 
 	render() {
-		const { container, line } = this._getStyle();
-
 		return (
-			<ScrollView horizontal={true} pagingEnabled={true} showsHorizontalScrollIndicator={false}>
-				{this.props.rowsAndSections.map((section: Object): Object => {
-					const dataSource = new ListDataSource(
-						{
-							rowHasChanged: this._rowHasChanged,
-						},
-					).cloneWithRows(section);
-
-					return (
-						<View>
-							<JobsPoster/>
-							<View style={container}>
-								<View style={line}/>
-								<List
-									dataSource={dataSource}
-									renderRow={this._renderRow}
-									onRefresh={this.onRefresh}
-								/>
-							</View>
-						</View>
-					);
-				})}
+			<ScrollView
+				horizontal={true}
+				pagingEnabled={true}
+				showsHorizontalScrollIndicator={false}
+			>
+				{this.state.daysToRender}
 			</ScrollView>
 		);
 	}
+
+	_getDaysToRender = (dataArray: Object[]): React$Element<any>[] => {
+		const { container, line } = this._getStyle();
+
+		return dataArray.map((section: Object): Object => {
+			const dataSource = new ListDataSource(
+				{
+					rowHasChanged: this._rowHasChanged,
+				},
+			).cloneWithRows(section);
+
+			return (
+				<View>
+					<JobsPoster/>
+					<View style={container}>
+						<View style={line}/>
+						<List
+							dataSource={dataSource}
+							renderRow={this._renderRow}
+							onRefresh={this.onRefresh}
+						/>
+					</View>
+				</View>
+			);
+		});
+	};
 
 	_rowHasChanged = (r1: Object, r2: Object): boolean => {
 		if (r1 === r2) {
@@ -105,7 +139,7 @@ class SchedulerTab extends View<null, Props, null> {
 		);
 	};
 
-	_renderRow = (props: Object, sectionId: number, rowId: string): Object => {
+	_renderRow = (props: Object, sectionId: number, rowId: string): React$Element<JobRow> => {
 		return (
 			<JobRow {...props} isFirst={+rowId === 0}/>
 		);
