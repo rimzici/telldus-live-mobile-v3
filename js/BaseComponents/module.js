@@ -51,7 +51,6 @@ import Card from './Card';
 import Badge from './Badge';
 import Spinner from './Spinner';
 import ProgressBar from './ProgressBar';
-import { Col, Row, Grid } from 'react-native-easy-grid';
 import ScrollableTabView from './Tabs';
 import NavigatorIOS from './NavigatorIOS';
 import I18n from './I18n';
@@ -62,6 +61,7 @@ import CheckboxSolid from './CheckboxSolid';
 import IconTelldus from './IconTelldus';
 import BlockIcon from './BlockIcon';
 import Poster from './Poster';
+import Row from './Row';
 
 import {
 	AppState,
@@ -94,9 +94,6 @@ module.exports = {
 	H3: H3,
 	View: View,
 	RoundedCornerShadowView: RoundedCornerShadowView,
-	Row: Row,
-	Col: Col,
-	Grid: Grid,
 	InputGroup: InputGroup,
 	Input: Input,
 	Textarea: Textarea,
@@ -115,6 +112,7 @@ module.exports = {
 	IconTelldus,
 	BlockIcon,
 	Poster,
+	Row,
 
 	AppState: AppState,
 	Dimensions: Dimensions,
