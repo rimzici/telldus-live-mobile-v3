@@ -85,6 +85,9 @@ export default function scheduleReducer(state: Schedule = initialState, action: 
 				weekdays: action.payload.weekdays,
 			};
 
+		case 'SCHEDULE_EDIT':
+			return action.payload.schedule;
+
 		default:
 			return state;
 	}
