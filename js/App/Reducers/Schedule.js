@@ -39,7 +39,7 @@ const initialState = {
 	weekdays: [],
 };
 
-type State = {
+export type Schedule = {
 	id: number,
 	deviceId: number,
 	method: number,
@@ -53,7 +53,7 @@ type State = {
 	weekdays: number[],
 };
 
-export default function scheduleReducer(state: State = initialState, action: Action): State {
+export default function scheduleReducer(state: Schedule = initialState, action: Action): Schedule {
 	switch (action.type) {
 		case 'SCHEDULE_SELECT_DEVICE':
 			return {
