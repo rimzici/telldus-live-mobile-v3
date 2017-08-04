@@ -38,8 +38,7 @@ import {
 import { getDevices } from 'Actions_Devices';
 import { toggleEditMode } from 'Actions';
 
-import getDeviceType from '../../Lib/getDeviceType';
-import getTabBarIcon from '../../Lib/getTabBarIcon';
+import { getDeviceType, getTabBarIcon } from 'Lib';
 
 import { parseDevicesForListView } from 'Reducers_Devices';
 

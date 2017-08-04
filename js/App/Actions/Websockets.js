@@ -26,12 +26,10 @@
 import type { Dispatch, GetState, ThunkAction } from './Types';
 
 import { v4 } from 'react-native-uuid';
-import TelldusWebsocket from '../Lib/Socket';
+import { formatTime, TelldusWebsocket } from 'Lib';
 
 import { processWebsocketMessageForSensor } from 'Actions_Sensors';
 import { processWebsocketMessageForDevice } from 'Actions_Devices';
-
-import formatTime from '../Lib/formatTime';
 
 import LiveApi from 'LiveApi';
 

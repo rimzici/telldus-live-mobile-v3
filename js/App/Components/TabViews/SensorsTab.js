@@ -32,7 +32,7 @@ import { getSensors } from 'Actions';
 import { toggleEditMode } from 'Actions';
 
 import { parseSensorsForListView } from '../../Reducers/Sensors';
-import getTabBarIcon from '../../Lib/getTabBarIcon';
+import { getTabBarIcon } from 'Lib';
 
 type Props = {
 	rowsAndSections: Object,

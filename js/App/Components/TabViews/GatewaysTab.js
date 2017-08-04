@@ -31,7 +31,7 @@ import { getGateways } from 'Actions';
 import { parseGatewaysForListView } from '../../Reducers/Gateways';
 
 import Theme from 'Theme';
-import getTabBarIcon from '../../Lib/getTabBarIcon';
+import { getTabBarIcon } from 'Lib';
 
 type Props = {
 	rows: Array<Object>,
