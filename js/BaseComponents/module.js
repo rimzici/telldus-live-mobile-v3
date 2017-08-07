@@ -64,6 +64,7 @@ import Poster from './Poster';
 import Row from './Row';
 import ListRow from './ListRow';
 import RowWithTriangle from './RowWithTriangle';
+import FullPageActivityIndicator from './FullPageActivityIndicator';
 
 import {
 	AppState,
@@ -117,6 +118,7 @@ module.exports = {
 	Row,
 	ListRow,
 	RowWithTriangle,
+	FullPageActivityIndicator,
 
 	AppState: AppState,
 	Dimensions: Dimensions,
