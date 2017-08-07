@@ -49,7 +49,8 @@ import { getUserProfile as getUserProfileSelector } from '../Reducers/User';
 
 const RouteConfigs = {
 	Tabs: {
-		screen: TabsView,
+		// eslint-disable-next-line
+		screen: ({ navigation }) => <TabsView screenProps={{ rootNavigation: navigation }}/>,
 	},
 	Schedule: {
 		screen: ScheduleNavigator,

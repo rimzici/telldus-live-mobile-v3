@@ -144,11 +144,8 @@ class TabsView extends View<null, Props, State> {
 		this.props.onToggleEditMode(tab);
 	};
 
-	goAddSchedule = () => {
-		this.props.navigation.navigate('Schedule');
-	};
-
 	render() {
+		const { rootNavigation } = this.props.screenProps;
 		const { routeName } = this.state.tab;
 
 		const rightButton = this._defineRightButton(routeName);
@@ -156,14 +153,10 @@ class TabsView extends View<null, Props, State> {
 		return (
 			<View>
 				<Header rightButton={rightButton}/>
-				<Tabs onNavigationStateChange={this.onNavigationStateChange}/>
-				{routeName === 'Scheduler' && (
-					<FloatingButton
-						onPress={this.goAddSchedule}
-						imageSource={require('./img/iconPlus.png')}
-						tabs={true}
-					/>
-				)}
+				<Tabs
+					onNavigationStateChange={this.onNavigationStateChange}
+					screenProps={{ rootNavigation }}
+				/>
 				{
 					this.state.settings ? (
 						<SettingsDetailModal isVisible={true} onClose={this.onCloseSetting}/>
