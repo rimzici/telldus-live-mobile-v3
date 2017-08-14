@@ -20,6 +20,8 @@ import android.widget.ImageView;
 import android.widget.RemoteViews;
 import android.widget.TextView;
 
+import org.json.JSONObject;
+
 /**
  * The configuration screen for the {@link ConfigurableSensorWidget ConfigurableSensorWidget} AppWidget.
  */
@@ -117,4 +119,3 @@ public class ConfigurableSensorWidgetConfigureActivity extends Activity {
         });
     }
 }
-
