@@ -26,9 +26,13 @@
 import type { Action, ThunkAction } from './Types';
 import { apiServer } from 'Config';
 import { publicKey, privateKey } from 'Config';
+import { Answers } from 'react-native-fabric';
+import FileSystem from 'react-native-filesystem';
 
 import LiveApi from 'LiveApi';
 import { destroyAllConnections } from 'Actions_Websockets';
+
+// var SharedPreferences = require('react-native-shared-preferences');
 
 // TODO: rewrite into proper ThunkAction that does its own dispatching
 async function loginToTelldus(username:string, password:string): Promise<Action> {
@@ -56,12 +60,18 @@ async function loginToTelldus(username:string, password:string): Promise<Action>
 				if (responseData.error) {
 					throw responseData;
 				}
+				// SharedPreferences.setItem("access_token", responseData.access_token);
+				// writeToFile(responseData.access_token);
+				writeToFile(JSON.stringify(responseData));
+				readFile();
+				Answers.logLogin('Password', true);
 				resolve({
 					type: 'RECEIVED_ACCESS_TOKEN',
 					accessToken: responseData,
 				});
 			})
 			.catch((e) => {
+				Answers.logLogin('Password', false);
 				reject({
 					type: 'ERROR',
 					message: {
@@ -73,6 +83,16 @@ async function loginToTelldus(username:string, password:string): Promise<Action>
 			});
 	});
 
+}
+
+async function writeToFile(data) {
+	await FileSystem.writeToFile('auth.txt', data);
+	console.log('Data written successfully!');
+}
+
+async function readFile() {
+	const fileContents = await FileSystem.readFile('auth.txt');
+	console.log(`read data from file: ${fileContents}`);
 }
 
 function updateAccessToken(accessToken:Object): Action {
