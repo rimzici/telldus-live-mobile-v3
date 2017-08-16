@@ -136,6 +136,11 @@ android {
             }
         }
     }
+
+    packagingOptions {
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/NOTICE'
+    }
 }
 
 dependencies {
@@ -146,10 +151,13 @@ dependencies {
     compile project(':react-native-device-info')
     compile project(':react-native-vector-icons')
     compile project(':react-native-push-notification')
+    compile ('com.amitshekhar.android:android-networking:0.3.0')
+    compile ('com.amitshekhar.android:jackson-android-networking:0.3.0')
     compile ('com.google.android.gms:play-services-gcm:8.1.0') {
         force = true;
     }
     compile fileTree(dir: "libs", include: ["*.jar"])
+    //noinspection GradleCompatible
     compile "com.android.support:appcompat-v7:23.0.1"
     compile "com.facebook.react:react-native:+"  // From node_modules
 }

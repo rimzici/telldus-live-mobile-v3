@@ -22,7 +22,6 @@ import com.androidnetworking.AndroidNetworking;
 import com.androidnetworking.common.Priority;
 import com.androidnetworking.error.ANError;
 import com.androidnetworking.interfaces.JSONObjectRequestListener;
-import com.telldus.live.mobile.interfaces.TelldusAPI;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -79,7 +78,6 @@ public class ConfigurableDeviceWidgetConfigureActivity extends Activity {
     private String tokenType;
     private String scope;
     private String refreshToken;
-    private TelldusAPI telldusAPI;
 
     @Override
     public void onCreate(Bundle icicle) {
