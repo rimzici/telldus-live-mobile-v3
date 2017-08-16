@@ -37,7 +37,6 @@ public class MainActivity extends ReactActivity {
 		super.onConfigurationChanged(newConfig);
 		Intent intent = new Intent("onConfigurationChanged");
 		intent.putExtra("newConfig", newConfig);
-//		this.sendBroadcast(intent);
-		this.sendBroadcast(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME));
+		this.sendBroadcast(intent);
   }
 }
