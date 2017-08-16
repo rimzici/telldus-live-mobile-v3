@@ -27,7 +27,7 @@ import org.json.JSONObject;
  */
 public class ConfigurableSensorWidgetConfigureActivity extends Activity {
     int mAppWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID;
-    private EditText etUrl;
+    // private EditText etUrl;
     private Button btAdd;
     private View btSelectSensor, btSelectDisplayItem;
     private TextView sensorName, sensorHint, sensorDataName, sensorDataHint;
@@ -45,7 +45,7 @@ public class ConfigurableSensorWidgetConfigureActivity extends Activity {
         // activity stuffs
         setContentView(R.layout.activity_sensor_widget_configure);
         Typeface font = Typeface.createFromAsset(getAssets(), "fonts/telldusicons.ttf");
-        etUrl = (EditText) findViewById(R.id.etUrl);
+        // etUrl = (EditText) findViewById(R.id.etUrl);
         widgetManager = AppWidgetManager.getInstance(this);
         views = new RemoteViews(this.getPackageName(), R.layout.configurable_sensor_widget);
         // Find the widget id from the intent.
@@ -68,7 +68,7 @@ public class ConfigurableSensorWidgetConfigureActivity extends Activity {
             @Override
             public void onClick(View view) {
                 // Gets user input
-                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(etUrl.getText().toString()));
+                // Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(etUrl.getText().toString()));
                 PendingIntent pending = PendingIntent.getActivity(ConfigurableSensorWidgetConfigureActivity.this, 0, intent, 0);
                 views.setOnClickPendingIntent(R.id.iconWidget, pending);
                 views.setTextViewText(R.id.txtSensorType, sensorName.getText());
