@@ -37,7 +37,6 @@ import { destroyAllConnections } from 'Actions_Websockets';
 // TODO: rewrite into proper ThunkAction that does its own dispatching
 async function loginToTelldus(username:string, password:string): Promise<Action> {
 
-	console.log('&& &&&&&&&&&&&&&&&&&&&&&&&');
 	return new Promise((resolve, reject) => {
 		fetch(
 			`${apiServer}/oauth2/accessToken`,

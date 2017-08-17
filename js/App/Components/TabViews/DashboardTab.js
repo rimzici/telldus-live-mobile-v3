@@ -27,7 +27,6 @@ import { Dimensions } from 'react-native';
 import { connect } from 'react-redux';
 import Subscribable from 'Subscribable';
 import { Text, List, ListDataSource, View, I18n } from 'BaseComponents';
-import Platform from 'Platform';
 import { getDevices } from 'Actions_Devices';
 import { changeSensorDisplayType } from 'Actions_Dashboard';
 
@@ -52,7 +51,9 @@ type Props = {
 	userProfile: Object,
 	tab: string,
 	onChangeDisplayType: () => void,
+	dashboard: Object,
 	dispatch: Function,
+	navigation: Object,
 	onTurnOn: (number) => void,
 	onTurnOff: (number) => void,
 	onDim: (number) => void,

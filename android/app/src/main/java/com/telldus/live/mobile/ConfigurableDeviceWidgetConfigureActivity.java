@@ -79,7 +79,7 @@ public class ConfigurableDeviceWidgetConfigureActivity extends Activity {
     private String tokenType;
     private String scope;
     private String refreshToken;
-
+    private TelldusAPI telldusAPI;
 
     @Override
     public void onCreate(Bundle icicle) {
@@ -275,8 +275,6 @@ public class ConfigurableDeviceWidgetConfigureActivity extends Activity {
                                 Integer state = curObj.getInt("state");
                                 nameListItems.add(name);
                                 stateListItems.add(state.toString());
-                                Log.d("************************************", name);
-                                Log.d("************************************", state.toString());
                             }
                             deviceNameList = nameListItems.toArray(new CharSequence[nameListItems.size()]);
                             deviceStateList = stateListItems.toArray(new CharSequence[stateListItems.size()]);

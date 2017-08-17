@@ -20,20 +20,14 @@ import android.widget.ImageView;
 import android.widget.RemoteViews;
 import android.widget.TextView;
 
-import org.json.JSONException;
 import org.json.JSONObject;
-
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 
 /**
  * The configuration screen for the {@link ConfigurableSensorWidget ConfigurableSensorWidget} AppWidget.
  */
 public class ConfigurableSensorWidgetConfigureActivity extends Activity {
     int mAppWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID;
-    // private EditText etUrl;
+    private EditText etUrl;
     private Button btAdd;
     private View btSelectSensor, btSelectDisplayItem;
     private TextView sensorName, sensorHint, sensorDataName, sensorDataHint;
@@ -44,65 +38,18 @@ public class ConfigurableSensorWidgetConfigureActivity extends Activity {
     CharSequence sensorList[] = new CharSequence[] {"Outdoor Temp", "Indoor Temp", "Fridge", "Freezer"};
     CharSequence sensorDataList[] = new CharSequence[] {"Temperature", "Humidity", "Wind", "Rain"};
 
-    private String accessToken;
-    private String expiresIn;
-    private String tokenType;
-    private String scope;
-    private String refreshToken;
-
     @Override
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
-
-        //Get the text file
-        File fileAuth = new File(getApplicationContext().getFilesDir().getAbsolutePath() + "/RNFS-BackedUp/auth.txt");
-        if (fileAuth.exists()) {
-            Log.d("File exists?", "Yes");
-
-            //Read text from file
-            StringBuilder text = new StringBuilder();
-
-            try {
-                BufferedReader br = new BufferedReader(new FileReader(fileAuth));
-                String line;
-                while ((line = br.readLine()) != null) {
-                    text.append(line);
-                    text.append('\n');
-                }
-                br.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            try {
-                JSONObject authInfo = new JSONObject(String.valueOf(text));
-                accessToken = String.valueOf(authInfo.getString("access_token"));
-                expiresIn = String.valueOf(authInfo.getString("expires_in"));
-                tokenType = String.valueOf(authInfo.getString("token_type"));
-                scope = String.valueOf(authInfo.getString("scope"));
-                refreshToken = String.valueOf(authInfo.getString("refresh_token"));
-
-                Log.d("Auth token", accessToken);
-                Log.d("Expires in", expiresIn);
-                Log.d("Token type", tokenType);
-                Log.d("Scope", scope);
-                Log.d("Refresh token", refreshToken);
-
-//                createSensorApi();
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-        }
-        
         setResult(RESULT_CANCELED);
         // activity stuffs
         setContentView(R.layout.activity_sensor_widget_configure);
         Typeface font = Typeface.createFromAsset(getAssets(), "fonts/telldusicons.ttf");
-        // etUrl = (EditText) findViewById(R.id.etUrl);
+        etUrl = (EditText) findViewById(R.id.etUrl);
         widgetManager = AppWidgetManager.getInstance(this);
         views = new RemoteViews(this.getPackageName(), R.layout.configurable_sensor_widget);
         // Find the widget id from the intent.
-        final Intent intent = getIntent();
+        Intent intent = getIntent();
         Bundle extras = intent.getExtras();
         if (extras != null) {
             mAppWidgetId = extras.getInt(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
@@ -121,7 +68,7 @@ public class ConfigurableSensorWidgetConfigureActivity extends Activity {
             @Override
             public void onClick(View view) {
                 // Gets user input
-                // Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(etUrl.getText().toString()));
+                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(etUrl.getText().toString()));
                 PendingIntent pending = PendingIntent.getActivity(ConfigurableSensorWidgetConfigureActivity.this, 0, intent, 0);
                 views.setOnClickPendingIntent(R.id.iconWidget, pending);
                 views.setTextViewText(R.id.txtSensorType, sensorName.getText());
@@ -172,3 +119,4 @@ public class ConfigurableSensorWidgetConfigureActivity extends Activity {
         });
     }
 }
+

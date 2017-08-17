@@ -22,7 +22,7 @@ package com.telldus.live.mobile.test;
 import android.app.Application;
 import android.util.Log;
 
-import com.facebook.react.BuildConfig;
+//import com.androidnetworking.AndroidNetworking;
 import com.facebook.react.ReactApplication;
 import com.dieam.reactnativepushnotification.ReactNativePushNotificationPackage;
 import com.facebook.react.ReactInstanceManager;
@@ -34,12 +34,14 @@ import com.facebook.soloader.SoLoader;
 import java.util.Arrays;
 import java.util.List;
 
-//import com.smixx.fabric.FabricPackage;
-//import com.crashlytics.android.Crashlytics;
-//import com.crashlytics.android.core.CrashlyticsCore;
 import com.learnium.RNDeviceInfo.RNDeviceInfo;
 import com.oblador.vectoricons.VectorIconsPackage;
 import ca.jaysoo.extradimensions.ExtraDimensionsPackage;
+import com.smixx.fabric.FabricPackage;
+import com.crashlytics.android.Crashlytics;
+import com.crashlytics.android.core.CrashlyticsCore;
+import io.fabric.sdk.android.Fabric;
+// import in.sriraman.sharedpreferences.RNSharedPreferencesReactPackage;
 import com.benwixen.rnfilesystem.RNFileSystemPackage;
 
 public class MainApplication extends Application implements ReactApplication {
@@ -53,11 +55,13 @@ public class MainApplication extends Application implements ReactApplication {
 		@Override
 		protected List<ReactPackage> getPackages() {
 			return Arrays.<ReactPackage>asList(
+				new FabricPackage(),
 				new RNDeviceInfo(),
 				new VectorIconsPackage(),
 				new ExtraDimensionsPackage(),
 				new MainReactPackage(),
 				new ReactNativePushNotificationPackage(),
+				// new RNSharedPreferencesReactPackage(),
 				new RNFileSystemPackage()
 			);
 		}
@@ -72,10 +76,10 @@ public class MainApplication extends Application implements ReactApplication {
     public void onCreate() {
         super.onCreate();
         // Set up Crashlytics, disabled for debug builds
-//        Crashlytics crashlyticsKit = new Crashlytics.Builder()
-//          .core(new CrashlyticsCore.Builder().disabled(BuildConfig.DEBUG).build())
-//          .build();
-//        Fabric.with(this, crashlyticsKit);
+        Crashlytics crashlyticsKit = new Crashlytics.Builder()
+          .core(new CrashlyticsCore.Builder().disabled(BuildConfig.DEBUG).build())
+          .build();
+        Fabric.with(this, crashlyticsKit);
         SoLoader.init(this, /* native exopackage */ false);
 //    	AndroidNetworking.initialize(getApplicationContext());
 	}

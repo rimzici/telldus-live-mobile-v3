@@ -26,6 +26,7 @@
 import type { Dispatch, GetState, ThunkAction } from './Types';
 
 import { v4 } from 'react-native-uuid';
+import { reportException } from 'Analytics';
 import TelldusWebsocket from '../Lib/Socket';
 
 import { processWebsocketMessageForSensor } from 'Actions_Sensors';
@@ -61,8 +62,9 @@ export const authenticateSession : () => ThunkAction = (() => {
 			websockets: { session: { ttl, sessionId } },
 		} = getState();
 		const now = new Date();
+		const ttlDate = new Date(ttl * 1000);
 
-		if (ttl > now) {
+		if (ttlDate > now) {
 			// session still valid, not creating new one
 			return new Promise.resolve(sessionId);
 		}
@@ -226,6 +228,7 @@ const setupGatewayConnection = (gatewayId:string, address:string, port:string) =
 			console.groupCollapsed(message);
 			console.groupEnd();
 		} catch (e) {
+			reportException(e);
 			console.log(message);
 		}
 
@@ -367,7 +370,11 @@ const setupGatewayConnection = (gatewayId:string, address:string, port:string) =
 		} catch (e) {
 			console.log(message);
 		}
-    // $FlowFixMe
-		websocket.send(message);
+		try {
+			// $FlowFixMe
+			websocket.send(message);
+		} catch (e) {
+			reportException(e);
+		}
 	}
 };

@@ -4,7 +4,7 @@
     android:initialKeyguardLayout="@layout/configurable_sensor_widget"
     android:initialLayout="@layout/configurable_sensor_widget"
     android:minHeight="40dp"
-    android:minWidth="40dp"
+    android:minWidth="100dp"
     android:previewImage="@drawable/sensor"
     android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="86400000"

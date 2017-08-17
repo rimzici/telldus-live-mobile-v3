@@ -10,7 +10,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
+	  <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
 
     <uses-sdk
@@ -35,19 +35,31 @@
               <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
+        
         <receiver
         android:name=".ConfigurableDeviceWidget"
         android:label="Device">
 
             <intent-filter>
-            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
 
             <meta-data
             android:name="android.appwidget.provider"
             android:resource="@xml/configurable_device_widget_info" />
         </receiver>
+
+        <!--<receiver-->
+            <!--android:name=".ConfigurableDeviceWidgetReceiver"-->
+            <!--android:label="Device">-->
+            <!--<intent-filter>-->
+                <!--<action android:name="android.appwidget.action.TOGGLE_ICON"></action>-->
+            <!--</intent-filter>-->
+
+            <!--<meta-data-->
+                <!--android:name="android.appwidget.provider"-->
+                <!--android:resource="@xml/configurable_device_widget_info" />-->
+        <!--</receiver>-->
 
         <receiver
             android:name=".ConfigurableSensorWidget"
@@ -74,7 +86,7 @@
             </intent-filter>
         </activity>
 
-        <activity android:name="com.facebook.react.devsupport.DevSettingsActivity" />
+      <activity android:name="com.facebook.react.devsupport.DevSettingsActivity" />
         <receiver
           android:name="com.google.android.gms.gcm.GcmReceiver"
           android:exported="true"
@@ -99,6 +111,10 @@
               <action android:name="com.google.android.c2dm.intent.RECEIVE" />
           </intent-filter>
         </service>
+        <meta-data
+          android:name="io.fabric.ApiKey"
+          android:value="6ddcb9201beba571821a466b7b634103262d6903"
+        />
     </application>
 
 </manifest>
