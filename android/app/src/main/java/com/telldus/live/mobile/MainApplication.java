@@ -34,9 +34,9 @@ import com.facebook.soloader.SoLoader;
 import java.util.Arrays;
 import java.util.List;
 
-import com.smixx.fabric.FabricPackage;
-import com.crashlytics.android.Crashlytics;
-import com.crashlytics.android.core.CrashlyticsCore;
+//import com.smixx.fabric.FabricPackage;
+//import com.crashlytics.android.Crashlytics;
+//import com.crashlytics.android.core.CrashlyticsCore;
 import com.learnium.RNDeviceInfo.RNDeviceInfo;
 import com.oblador.vectoricons.VectorIconsPackage;
 import ca.jaysoo.extradimensions.ExtraDimensionsPackage;
@@ -72,10 +72,10 @@ public class MainApplication extends Application implements ReactApplication {
     public void onCreate() {
         super.onCreate();
         // Set up Crashlytics, disabled for debug builds
-        Crashlytics crashlyticsKit = new Crashlytics.Builder()
-          .core(new CrashlyticsCore.Builder().disabled(BuildConfig.DEBUG).build())
-          .build();
-        Fabric.with(this, crashlyticsKit);
+//        Crashlytics crashlyticsKit = new Crashlytics.Builder()
+//          .core(new CrashlyticsCore.Builder().disabled(BuildConfig.DEBUG).build())
+//          .build();
+//        Fabric.with(this, crashlyticsKit);
         SoLoader.init(this, /* native exopackage */ false);
 //    	AndroidNetworking.initialize(getApplicationContext());
 	}

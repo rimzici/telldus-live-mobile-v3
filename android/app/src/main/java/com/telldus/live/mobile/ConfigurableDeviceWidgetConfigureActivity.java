@@ -79,7 +79,7 @@ public class ConfigurableDeviceWidgetConfigureActivity extends Activity {
     private String tokenType;
     private String scope;
     private String refreshToken;
-    private TelldusAPI telldusAPI;
+
 
     @Override
     public void onCreate(Bundle icicle) {
