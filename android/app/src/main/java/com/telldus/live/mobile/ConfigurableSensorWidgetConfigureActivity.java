@@ -20,7 +20,21 @@ import android.widget.ImageView;
 import android.widget.RemoteViews;
 import android.widget.TextView;
 
+import com.androidnetworking.AndroidNetworking;
+import com.androidnetworking.common.Priority;
+import com.androidnetworking.error.ANError;
+import com.androidnetworking.interfaces.JSONObjectRequestListener;
+
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * The configuration screen for the {@link ConfigurableSensorWidget ConfigurableSensorWidget} AppWidget.
@@ -35,12 +49,61 @@ public class ConfigurableSensorWidgetConfigureActivity extends Activity {
     private AppWidgetManager widgetManager;
     private RemoteViews views;
 
-    CharSequence sensorList[] = new CharSequence[] {"Outdoor Temp", "Indoor Temp", "Fridge", "Freezer"};
+//    CharSequence sensorList[] = new CharSequence[] {"Outdoor Temp", "Indoor Temp", "Fridge", "Freezer"};
     CharSequence sensorDataList[] = new CharSequence[] {"Temperature", "Humidity", "Wind", "Rain"};
+    CharSequence[] sensorNameList = null;
+    List<String> nameListItems = new ArrayList<String>();
+
+    private String accessToken;
+    private String expiresIn;
+    private String tokenType;
+    private String scope;
+    private String refreshToken;
 
     @Override
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
+
+        //Get the text file
+        File fileAuth = new File(getApplicationContext().getFilesDir().getAbsolutePath() + "/RNFS-BackedUp/auth.txt");
+        if (fileAuth.exists()) {
+            Log.d("File exists?", "Yes");
+
+            //Read text from file
+            StringBuilder text = new StringBuilder();
+
+            try {
+                BufferedReader br = new BufferedReader(new FileReader(fileAuth));
+                String line;
+                while ((line = br.readLine()) != null) {
+                    text.append(line);
+                    text.append('\n');
+                }
+                br.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            try {
+                JSONObject authInfo = new JSONObject(String.valueOf(text));
+                accessToken = String.valueOf(authInfo.getString("access_token"));
+                expiresIn = String.valueOf(authInfo.getString("expires_in"));
+                tokenType = String.valueOf(authInfo.getString("token_type"));
+                scope = String.valueOf(authInfo.getString("scope"));
+                refreshToken = String.valueOf(authInfo.getString("refresh_token"));
+
+                Log.d("Auth token", accessToken);
+                Log.d("Expires in", expiresIn);
+                Log.d("Token type", tokenType);
+                Log.d("Scope", scope);
+                Log.d("Refresh token", refreshToken);
+
+                createSensorApi();
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+        
         setResult(RESULT_CANCELED);
         // activity stuffs
         setContentView(R.layout.activity_sensor_widget_configure);
@@ -70,7 +133,7 @@ public class ConfigurableSensorWidgetConfigureActivity extends Activity {
                 // Gets user input
                 // Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(etUrl.getText().toString()));
                 // PendingIntent pending = PendingIntent.getActivity(ConfigurableSensorWidgetConfigureActivity.this, 0, intent, 0);
-                views.setOnClickPendingIntent(R.id.iconWidget, pending);
+//                views.setOnClickPendingIntent(R.id.iconWidget, pending);
                 views.setTextViewText(R.id.txtSensorType, sensorName.getText());
                 views.setImageViewResource(R.id.iconSensor, R.drawable.sensor);
                 widgetManager.updateAppWidget(mAppWidgetId, views);
@@ -89,10 +152,10 @@ public class ConfigurableSensorWidgetConfigureActivity extends Activity {
             public void onClick(View view) {
                 AlertDialog.Builder builder = new AlertDialog.Builder(ConfigurableSensorWidgetConfigureActivity.this);
                 builder.setTitle(R.string.pick_sensor)
-                        .setSingleChoiceItems(sensorList, checkedItem, new DialogInterface.OnClickListener() {
+                        .setSingleChoiceItems(sensorNameList, checkedItem, new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
-                                sensorName.setText(sensorList[which]);
+                                sensorName.setText(sensorNameList[which]);
                                 sensorHint.setText(null);
                             }
                         });
@@ -117,6 +180,39 @@ public class ConfigurableSensorWidgetConfigureActivity extends Activity {
                 builder.show();
             }
         });
+    }
+
+    void createSensorApi() {
+        Log.d("&&&&&&&&&&&&&&&&&&&&&&&", "&&&&&&&&&&&&&&&&&&&&&&&&&&");
+        AndroidNetworking.post("https://api.telldus.com/oauth2/sensors/list")
+            .addHeaders("Content-Type", "application/json")
+            .addHeaders("Accpet", "application/json")
+            .addHeaders("Authorization", "Bearer " + accessToken)
+            .setPriority(Priority.LOW)
+            .build()
+            .getAsJSONObject(new JSONObjectRequestListener() {
+                @Override
+                public void onResponse(JSONObject response) {
+                    try {
+                        JSONObject sensorData = new JSONObject(response.toString());
+                        JSONArray sensorList = sensorData.getJSONArray("sensor");
+                        for (int i = 0; i < sensorList.length(); i++) {
+                            JSONObject curObj = sensorList.getJSONObject(i);
+                            String name = curObj.getString("name");
+                            Log.d("&&&&&&&&&&&&&&&&&&&&&&&", name);
+                            nameListItems.add(name);
+                        }
+                        sensorNameList = nameListItems.toArray(new CharSequence[nameListItems.size()]);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    };
+                }
+
+                @Override
+                public void onError(ANError anError) {
+
+                }
+            });
     }
 }
 
