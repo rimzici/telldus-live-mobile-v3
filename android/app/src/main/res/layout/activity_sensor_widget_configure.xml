@@ -242,12 +242,12 @@
 
             </LinearLayout>
 
-            <EditText
+<!--             <EditText
                 android:id="@+id/etUrl"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="URL"
-                android:inputType="text"/>
+                android:inputType="text"/> -->
 
         </LinearLayout>
 
