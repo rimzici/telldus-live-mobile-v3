@@ -123,6 +123,11 @@
                         android:text="Tap to select device"
                         android:textSize="10sp"
                         android:textColor="@color/darkGray"/>
+                        
+                    <TextView
+                        android:id="@+id/valDeviceState"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"/>
 
                 </LinearLayout>
 
