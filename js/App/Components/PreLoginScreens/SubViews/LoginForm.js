@@ -32,16 +32,6 @@ import { loginToTelldus, showModal } from '../../../Actions';
 import { testUsername, testPassword } from '../../../../Config';
 
 import i18n from '../../../Translations/common';
-import {defineMessages} from 'react-intl';
-
-const messages = defineMessages({
-	fieldEmpty: {
-		id: 'form.login.fieldEmpty',
-		defaultMessage: 'Something seems to be missing in your form. Please check that ' +
-		'both email and password are entered correctly.',
-		description: 'Validation message to show on the login screen when Form submitted with empty fields',
-	},
-});
 
 type Props = {
 		dispatch: Function,
@@ -69,6 +59,8 @@ class LoginForm extends View {
 	onFormSubmit: (username: string, password: string) => void;
 	postSubmit: () => void;
 
+	invalidGrant: string;
+
 	constructor(props: Props) {
 		super(props);
 
@@ -88,6 +80,7 @@ class LoginForm extends View {
 		this.timedOut = `${formatMessage(i18n.timedOut)}, ${formatMessage(i18n.tryAgain)}?`;
 		this.unknownError = `${formatMessage(i18n.unknownError)}.`;
 		this.networkFailed = `${formatMessage(i18n.networkFailed)}.`;
+		this.invalidGrant = `${formatMessage(i18n.errorInvalidGrant)}.`;
 	}
 
 	render(): Object {
@@ -167,16 +160,13 @@ class LoginForm extends View {
 		let { intl, dispatch } = this.props;
 		if (this.state.username !== '' && this.state.password !== '') {
 			this.setState({ isLoading: true });
-			this.props.loginToTelldus(this.state.username, this.state.password, this.postSubmit)
-				.then((res: Object) => {
-					this.postSubmit();
-				})
+			this.props.loginToTelldus(this.state.username, this.state.password)
 				.catch((err: Object) => {
 					this.postSubmit();
 					this.handleLoginError(err);
 				});
 		} else {
-			let message = intl.formatMessage(messages.fieldEmpty);
+			let message = intl.formatMessage(i18n.fieldEmpty);
 			dispatch(showModal(message));
 		}
 	}
@@ -184,9 +174,13 @@ class LoginForm extends View {
 	handleLoginError(error: Object) {
 		let { dispatch } = this.props;
 		if (error.response) {
-			let errorMessage = error.response.data.error_description ?
-				error.response.data.error_description : error.response.data.error ?
-					error.response.data.error : this.unknownError;
+			const { data = {} } = error.response;
+			let errorMessage = data.error_description ?
+				data.error_description : data.error ?
+					data.error : this.unknownError;
+			if (data.error === 'invalid_grant') {
+				errorMessage = this.invalidGrant;
+			}
 			dispatch(showModal(errorMessage));
 		} else if (error.request) {
 			let errorMessage = !error.status && error.request._timedOut ? this.timedOut : this.networkFailed;

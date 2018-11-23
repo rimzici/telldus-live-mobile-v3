@@ -25,15 +25,25 @@ import orderBy from 'lodash/orderBy';
 import reduce from 'lodash/reduce';
 import partition from 'lodash/partition';
 import isEmpty from 'lodash/isEmpty';
-import { combineReducers } from 'redux';
+
+import { hasTokenExpired } from '../Lib/LocalControl';
 
 function prepareSectionRow(paramOne: Array<any> | Object, gateways: Array<any> | Object): Array<any> {
 	let modifiedData = paramOne.map((item: Object, index: number): Object => {
 		let gateway = gateways[item.clientId];
 		if (gateway) {
-			return { ...item, isOnline: gateway.online };
+			const { localKey, online, websocketOnline } = gateway;
+			const {
+				address,
+				key,
+				ttl,
+				supportLocal,
+			} = localKey;
+			const tokenExpired = hasTokenExpired(ttl);
+			const supportLocalControl = !!(address && key && ttl && !tokenExpired && supportLocal);
+			return { ...item, isOnline: online, websocketOnline, supportLocalControl };
 		}
-		return { ...item, isOnline: false };
+		return { ...item, isOnline: false, websocketOnline: false, supportLocalControl: false };
 	});
 	let result = groupBy(modifiedData, (items: Object): Array<any> => {
 		let gateway = gateways[items.clientId];
@@ -67,29 +77,3 @@ export function parseSensorsForListView(sensors: Object = {}, gateways: Object =
 	return { visibleList, hiddenList };
 }
 
-export type State = ?Object;
-
-const defaultTypeById = (state: Object = {}, action: Object): State => {
-	if (action.type === 'persist/REHYDRATE') {
-		if (action.payload && action.payload.sensorsList && action.payload.sensorsList.defaultTypeById) {
-			console.log('rehydrating sensorsList.defaultTypeById');
-			return {
-				...state,
-				...action.payload.sensorsList.defaultTypeById,
-			};
-		}
-		return { ...state };
-	}
-	if (action.type === 'CHANGE_SENSOR_DEFAULT_DISPLAY_TYPE') {
-		const { id, displayType } = action;
-		return {
-			...state,
-			[id]: displayType,
-		};
-	}
-	return state;
-};
-
-export default combineReducers({
-	defaultTypeById,
-});

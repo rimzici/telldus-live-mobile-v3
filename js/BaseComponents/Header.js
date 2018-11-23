@@ -22,7 +22,6 @@
 'use strict';
 
 import React from 'react';
-import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
 import { Platform, Image, Text, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
@@ -49,7 +48,7 @@ type Props = {
 	appLayout: Object,
 };
 
-class HeaderComponent extends Base {
+export default class HeaderComponent extends Base {
 
 	deviceWidth: number;
 	paddingHorizontal: number;
@@ -132,7 +131,7 @@ class HeaderComponent extends Base {
 		if (!this.props.children) {
 			return (
 				<Image
-					source={require('../App/Components/TabViews/img/telldus-logo3.png')}
+					source={{uri: 'telldus_logo'}}
 					style={[this.getInitialStyle().logoImage, this.props.logoStyle]}
 				/>
 			);
@@ -314,7 +313,7 @@ class HeaderComponent extends Base {
 			return <Icon name={name} size={size} color={color} style={iconStyle}/>;
 		}
 		if (button.title) {
-			return <Text>{button.title}</Text>;
+			return <Text allowFontScaling={false}>{button.title}</Text>;
 		}
 		if (button.component) {
 			return button.component;
@@ -376,9 +375,9 @@ class HeaderComponent extends Base {
 					) : null
 				}
 				<View {...this.prepareRootProps()}>
-					{leftButton && this.renderLeftButton(leftButton)}
+					{!!leftButton && this.renderLeftButton(leftButton)}
 					{this.renderChildren()}
-					{rightButton && this.renderRightButton(rightButton)}
+					{!!rightButton && this.renderRightButton(rightButton)}
 				</View>
 			</View>
 		);
@@ -393,10 +392,3 @@ HeaderComponent.propTypes = {
 	leftButton: PropTypes.object,
 };
 
-function mapStateToProps(store: Object): Object {
-	return {
-		appLayout: store.App.layout,
-	};
-}
-
-export default connect(mapStateToProps, null)(HeaderComponent);

@@ -30,7 +30,7 @@ const { User } = actions;
 
 import type { ThunkAction, Action } from './Types';
 import { publicKey, privateKey, apiServer } from '../../Config';
-import { LiveApi, reportError } from '../Lib';
+import { LiveApi } from '../Lib';
 
 
 /*
@@ -55,7 +55,7 @@ const registerPushToken = (token: string, name: string, model: string, manufactu
 			method: 'GET',
 		},
 	};
-	return LiveApi(payload).then((response: Object): any => {
+	return dispatch(LiveApi(payload)).then((response: Object): any => {
 		if ((!response.error) && (response.status === 'success')) {
 			dispatch({
 				type: 'PUSH_TOKEN_REGISTERED',
@@ -63,14 +63,16 @@ const registerPushToken = (token: string, name: string, model: string, manufactu
 				payload: {
 					...payload,
 					...response,
+					deviceId,
+					osVersion,
+					name,
+					model,
 				},
 			});
 			return response;
 		}
 		throw response;
 	}).catch((e: Object) => {
-		let log = JSON.stringify(e);
-		reportError(log);
 		if (e === 'TypeError: Network request failed') {
 			dispatch({
 				type: 'ERROR',
@@ -100,7 +102,7 @@ const unregisterPushToken = (token: string): ThunkAction => (dispatch: Function)
 			method: 'GET',
 		},
 	};
-	return LiveApi(payload).then((response: Object) => {
+	return dispatch(LiveApi(payload)).then((response: Object): any => {
 		if ((!response.error) && (response.status === 'success')) {
 			dispatch({
 				type: 'PUSH_TOKEN_UNREGISTERED',
@@ -110,7 +112,9 @@ const unregisterPushToken = (token: string): ThunkAction => (dispatch: Function)
 					...response,
 				},
 			});
+			return response;
 		}
+		throw response;
 	}).catch((e: Object) => {
 		if (e === 'TypeError: Network request failed') {
 			dispatch({
@@ -121,10 +125,11 @@ const unregisterPushToken = (token: string): ThunkAction => (dispatch: Function)
 				},
 			});
 		}
+		throw e;
 	});
 };
 
-const RegisterUser = (email: string, firstName: string, lastName: string): ThunkAction => (dispatch: Function, getState: Function): Promise<any> => {
+const registerUser = (email: string, firstName: string, lastName: string): ThunkAction => (dispatch: Function, getState: Function): Promise<any> => {
 	let formData = new FormData();
 	formData.append('email', email);
 	formData.append('firstname', firstName);
@@ -155,6 +160,29 @@ const RegisterUser = (email: string, firstName: string, lastName: string): Thunk
 		});
 };
 
+const forgotPassword = (email: string): ThunkAction => (dispatch: Function, getState: Function): Promise<any> => {
+	let formData = new FormData();
+	formData.append('email', email);
+	formData.append('client_id', publicKey);
+	formData.append('client_secret', privateKey);
+	return fetch(
+		`${apiServer}/oauth2/user/forgotPassword`,
+		{
+			method: 'POST',
+			body: formData,
+		}
+	)
+		.then((response: Object): Object => response.json())
+		.then((responseData: Object): any => {
+			if (responseData.error) {
+				throw responseData;
+			}
+			return responseData;
+		}).catch((e: Object): any => {
+			throw e;
+		});
+};
+
 const showChangeLog = (): Action => {
 	return {
 		type: 'SHOW_CHANGE_LOG',
@@ -171,8 +199,9 @@ const hideChangeLog = (): Action => {
 module.exports = {
 	...User,
 	registerPushToken,
-	RegisterUser,
+	registerUser,
 	unregisterPushToken,
 	showChangeLog,
 	hideChangeLog,
+	forgotPassword,
 };

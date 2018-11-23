@@ -24,7 +24,7 @@
 import React from 'react';
 import { connect } from 'react-redux';
 
-import { Icon, View } from '../../../../../BaseComponents';
+import { IconTelldus, View } from '../../../../../BaseComponents';
 import { StyleSheet, TouchableOpacity } from 'react-native';
 
 import ButtonLoadingIndicator from '../ButtonLoadingIndicator';
@@ -45,6 +45,8 @@ type Props = {
 	iconSize: number,
 	style: Object | Array<any> | number,
 	local: boolean,
+	isOpen: boolean,
+	closeSwipeRow: () => void,
 };
 
 class UpButton extends View {
@@ -61,7 +63,12 @@ class UpButton extends View {
 	}
 
 	onUp() {
-		this.props.deviceSetState(this.props.id, this.props.commandUp);
+		const { commandUp, id, isOpen, closeSwipeRow } = this.props;
+		if (isOpen && closeSwipeRow) {
+			closeSwipeRow();
+			return;
+		}
+		this.props.deviceSetState(id, commandUp);
 	}
 
 	render(): Object {
@@ -75,14 +82,14 @@ class UpButton extends View {
 			(isInState === 'UP' ? styles.offlineBackground : styles.disabledBackground) : (isInState === 'UP' ? styles.enabledBackground : styles.disabledBackground);
 		let upIconColor = !isGatewayActive ?
 			(isInState === 'UP' ? '#fff' : '#a2a2a2') : (isInState === 'UP' ? '#fff' : Theme.Core.brandSecondary);
-		let dotColor = local ? Theme.Core.brandPrimary : Theme.Core.brandSecondary;
+		let dotColor = isInState === methodRequested ? '#fff' : local ? Theme.Core.brandPrimary : Theme.Core.brandSecondary;
 
 		return (
 			<TouchableOpacity
 				style={[upButtonStyle, style]}
 				onPress={supportedMethod ? this.onUp : noop}
 				accessibilityLabel={`${this.labelUpButton}, ${name}`}>
-				<Icon name="caret-up" size={iconSize}
+				<IconTelldus icon="up" size={iconSize}
 		      style={{
 			      color: supportedMethod ? upIconColor : '#eeeeee',
 		      }}

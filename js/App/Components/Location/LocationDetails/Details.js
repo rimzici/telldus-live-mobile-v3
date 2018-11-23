@@ -23,8 +23,9 @@
 'use strict';
 
 import React from 'react';
-import { Image, TouchableOpacity } from 'react-native';
+import { Image, TouchableOpacity, TouchableWithoutFeedback, Alert, NetInfo } from 'react-native';
 import { connect } from 'react-redux';
+const DeviceInfo = require('react-native-device-info');
 
 import {
 	View, Text, TouchableButton, StyleSheet,
@@ -34,13 +35,11 @@ import LabelBox from '../Common/LabelBox';
 import Status from '../../TabViews/SubViews/Gateway/Status';
 
 import Theme from '../../../Theme';
-import { getRelativeDimensions } from '../../../Lib';
+import { hasTokenExpired } from '../../../Lib';
 import getLocationImageUrl from '../../../Lib/getLocationImageUrl';
 import i18n from '../../../Translations/common';
-import { messages as commonMessages } from '../Common/messages';
 
 type Props = {
-	rootNavigator: Object,
 	containerWidth: number,
 	navigation: Object,
 	location: Object,
@@ -67,20 +66,28 @@ class Details extends View {
 	labelSoftware: string;
 	confirmMessage: string;
 
+	onPressGatewayInfo: () => void;
+	infoPressCount: number;
+	timeoutInfoPress: any;
+
+	labelAutoDetected: string;
+
 	constructor(props: Props) {
 		super(props);
 
 		let { formatMessage } = props.intl;
 		this.labelName = formatMessage(i18n.name);
-		this.labelTimeZone = formatMessage(commonMessages.headerOneTimeZoneCity);
-		this.labelGeoPosition = formatMessage(commonMessages.geoPosition);
-		this.labelLat = formatMessage(commonMessages.latitude);
-		this.labelLong = formatMessage(commonMessages.longitude);
-		this.labelIPPublic = formatMessage(commonMessages.ipPublic);
-		this.labelIPLocal = formatMessage(commonMessages.ipLocal);
-		this.labelSoftware = formatMessage(commonMessages.software);
+		this.labelTimeZone = formatMessage(i18n.headerOneTimeZoneCity);
+		this.labelGeoPosition = formatMessage(i18n.geoPosition);
+		this.labelLat = formatMessage(i18n.latitude);
+		this.labelLong = formatMessage(i18n.longitude);
+		this.labelIPPublic = formatMessage(i18n.ipPublic);
+		this.labelIPLocal = formatMessage(i18n.ipLocal);
+		this.labelSoftware = formatMessage(i18n.software);
 
-		this.confirmMessage = formatMessage(commonMessages.confirmDelete);
+		this.labelAutoDetected = formatMessage(i18n.hint);
+
+		this.confirmMessage = formatMessage(i18n.confirmDelete);
 
 		this.labelDelete = formatMessage(i18n.delete);
 
@@ -88,6 +95,10 @@ class Details extends View {
 		this.onEditTimeZone = this.onEditTimeZone.bind(this);
 		this.onEditGeoPosition = this.onEditGeoPosition.bind(this);
 		this.onPressRemoveLocation = this.onPressRemoveLocation.bind(this);
+
+		this.onPressGatewayInfo = this.onPressGatewayInfo.bind(this);
+		this.infoPressCount = 0;
+		this.timeoutInfoPress = null;
 	}
 
 	componentDidMount() {
@@ -105,9 +116,22 @@ class Details extends View {
 		return nextProps.currentScreen === 'Details';
 	}
 
+	componentWillUnmount() {
+		this.infoPressCount = 0;
+		clearTimeout(this.timeoutInfoPress);
+	}
+
 	onEditName() {
 		const { navigation, location } = this.props;
-		navigation.navigate('EditName', {id: location.id, name: location.name});
+		navigation.navigate({
+			routeName: 'EditName',
+			key: 'EditName',
+			params: {
+				id: location.id,
+				name: location.name,
+			},
+		});
+		this.infoPressCount = 0;
 	}
 
 	onEditTimeZone() {
@@ -115,17 +139,55 @@ class Details extends View {
 		let { params } = navigation.state;
 		let newParams = { ...params, id: location.id, timezone: location.timezone };
 		navigation.navigate('EditTimeZoneContinent', newParams);
+		this.infoPressCount = 0;
 	}
 
 	onEditGeoPosition() {
 		let { navigation, location } = this.props;
 		let { latitude, longitude, id } = location;
-		navigation.navigate('EditGeoPosition', { id, latitude, longitude });
+		navigation.navigate({
+			routeName: 'EditGeoPosition',
+			key: 'EditGeoPosition',
+			params: {
+				id, latitude, longitude,
+			},
+		});
+		this.infoPressCount = 0;
 	}
 
 	onPressRemoveLocation() {
 		let { actions } = this.props;
 		actions.showModal(this.confirmMessage, 'DELETE_LOCATION');
+		this.infoPressCount = 0;
+	}
+
+	onPressGatewayInfo() {
+		clearTimeout(this.timeoutInfoPress);
+		this.infoPressCount++;
+		if (this.infoPressCount >= 5) {
+			const { location } = this.props;
+			const { online, websocketOnline, localKey = {} } = location;
+			NetInfo.getConnectionInfo().then((connectionInfo: Object) => {
+				this.infoPressCount = 0;
+				const { type, effectiveType } = connectionInfo;
+				const { ttl = null } = localKey;
+				const tokenExpired = hasTokenExpired(ttl);
+				const deviceName = DeviceInfo.getDeviceName();
+				const debugData = {
+					online,
+					websocketOnline,
+					...localKey,
+					tokenExpired,
+					connectionType: type,
+					connectionEffectiveType: effectiveType,
+					deviceName,
+				};
+				Alert.alert('Gateway && Network Info', JSON.stringify(debugData));
+			});
+		}
+		this.timeoutInfoPress = setTimeout(() => {
+			this.infoPressCount = 0;
+		}, 3000);
 	}
 
 	getLocationStatus(online: boolean, websocketOnline: boolean, localKey: Object): Object {
@@ -148,7 +210,19 @@ class Details extends View {
 		}
 
 
-		const { name, type, ip, version, timezone, latitude, longitude, online, websocketOnline, localKey } = location;
+		const {
+			name,
+			type,
+			ip,
+			version,
+			timezone,
+			latitude,
+			longitude,
+			online,
+			websocketOnline,
+			localKey = {},
+			timezoneAutodetected,
+		} = location;
 		const { address, key } = localKey;
 		const image = getLocationImageUrl(type);
 		const {
@@ -159,29 +233,33 @@ class Details extends View {
 
 		let info = this.getLocationStatus(online, websocketOnline, localKey);
 
+		const timezoneLabel = timezoneAutodetected ? `${this.labelTimeZone}\n(${this.labelAutoDetected})` : this.labelTimeZone;
+
 		return (
 			<View style={{flex: 1, paddingVertical: padding}}>
 				<LabelBox containerStyle={infoOneContainerStyle} appLayout={appLayout}>
 					<Image resizeMode={'contain'} style={locationImage} source={{ uri: image, isStatic: true }} />
-					<View style={boxItemsCover}>
-						<Text style={[textName]}>
-							{type}
-						</Text>
-						<Text style={locationInfo}>
-							{`${this.labelIPPublic}: ${ip}`}
-						</Text>
-						{
-							(address && key) && (
-								<Text style={locationInfo}>
-									{`${this.labelIPLocal}: ${address}`}
-								</Text>
-							)
-						}
-						<Text style={locationInfo}>
-							{`${this.labelSoftware}: v${version}`}
-						</Text>
-						{info && (info)}
-					</View>
+					<TouchableWithoutFeedback style={{flex: 1}} onPress={this.onPressGatewayInfo}>
+						<View style={boxItemsCover}>
+							<Text style={[textName]}>
+								{type}
+							</Text>
+							<Text style={locationInfo}>
+								{`${this.labelIPPublic}: ${ip}`}
+							</Text>
+							{
+								(!!address && !!key) && (
+									<Text style={locationInfo}>
+										{`${this.labelIPLocal}: ${address}`}
+									</Text>
+								)
+							}
+							<Text style={locationInfo}>
+								{`${this.labelSoftware}: v${version}`}
+							</Text>
+							{!!info && (info)}
+						</View>
+					</TouchableWithoutFeedback>
 				</LabelBox>
 				<TitledInfoBlock
 					label={this.labelName}
@@ -198,7 +276,7 @@ class Details extends View {
 					onPress={this.onEditName}
 				/>
 				<TitledInfoBlock
-					label={this.labelTimeZone}
+					label={timezoneLabel}
 					value={timezone}
 					icon={'angle-right'}
 					iconColor="#A59F9A90"
@@ -220,11 +298,11 @@ class Details extends View {
 					<View style={{ flexDirection: 'column', justifyContent: 'center', marginRight: 20 }}>
 						<Text style={[styles.textValue, {fontSize}]}>
 							{`${this.labelLat}: `}
-							<FormattedNumber value={latitude} maximumFractionDigits={3} style={styles.textValue}/>
+							<FormattedNumber value={latitude} maximumFractionDigits={3} style={[styles.textValue, {fontSize}]}/>
 						</Text>
 						<Text style={[styles.textValue, {fontSize}]}>
 							{` ${this.labelLong}: `}
-							<FormattedNumber value={longitude} maximumFractionDigits={3} style={styles.textValue}/>
+							<FormattedNumber value={longitude} maximumFractionDigits={3} style={[styles.textValue, {fontSize}]}/>
 						</Text>
 					</View>
 					<Icon name="angle-right" size={iconSize} color="#A59F9A90" style={styles.nextIcon}/>
@@ -276,6 +354,7 @@ class Details extends View {
 const styles = StyleSheet.create({
 	button: {
 		backgroundColor: Theme.Core.brandDanger,
+		marginTop: 10,
 	},
 	infoTwoContainerStyle: {
 		flexDirection: 'row',
@@ -298,10 +377,10 @@ const styles = StyleSheet.create({
 });
 
 function mapStateToProps(store: Object, ownProps: Object): Object {
-	let id = ownProps.rootNavigator.state.params.location.id;
+	let { id } = ownProps.navigation.getParam('location', {id: null});
 	return {
 		location: store.gateways.byId[id],
-		appLayout: getRelativeDimensions(store.App.layout),
+		appLayout: store.app.layout,
 	};
 }
 

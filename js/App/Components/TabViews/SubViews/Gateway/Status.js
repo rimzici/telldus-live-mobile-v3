@@ -59,14 +59,14 @@ constructor(props: Props) {
 render(): Object {
 	let { locationOffline, locationOnline, locationNoLiveUpdates } = Theme.Core;
 	let { online, websocketOnline, textStyle, appLayout, statusInfoStyle, localKey = {}} = this.props;
-	let { address, key, ttl } = localKey;
+	let { address, key, ttl, supportLocal } = localKey;
 	let tokenExpired = hasTokenExpired(ttl);
-	let supportLocal = address && key && ttl && !tokenExpired;
-	let icon = supportLocal ? 'localcontrol' : 'cloudcontrol';
+	let supportLocalControl = !!(address && key && ttl && !tokenExpired && supportLocal);
+	let icon = supportLocalControl ? 'localcontrol' : 'cloudcontrol';
 	let {
 		statusText,
 		statusInfo,
-	} = this.getStyles(appLayout, supportLocal);
+	} = this.getStyles(appLayout, supportLocalControl);
 
 	if (!online) {
 		icon = 'cloudcontrol';
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
 
 function mapStateToProps(store: Object): Object {
 	return {
-		appLayout: store.App.layout,
+		appLayout: store.app.layout,
 	};
 }
 

@@ -23,33 +23,12 @@
 'use strict';
 
 import React, { PureComponent } from 'react';
-import { Platform } from 'react-native';
-import { intlShape, defineMessages } from 'react-intl';
+import { Platform, Animated } from 'react-native';
+import { intlShape } from 'react-intl';
 
 import { View, Text, IconTelldus, StyleSheet } from '../../../../BaseComponents';
 import Theme from '../../../Theme';
-
-const messages = defineMessages({
-	wizardOneTitle37: {
-		id: 'changeLog37.wizardOne.title',
-		defaultMessage: 'Local control',
-	},
-	wizardOneDescription37: {
-		id: 'changeLog37.wizardOne.description',
-		defaultMessage: 'In this version we have added support for local control of your devices even if the connection '
-			+ 'to the cloud is lost. This works for TellStick Net v2 and TellStick Znet/Znet v2 and the phone needs to be connected '
-			+ 'to the same local network as the gateway.',
-	},
-	WizardTwoTitle37: {
-		id: 'changeLog37.WizardTwo.title',
-		defaultMessage: 'New settings screen',
-	},
-	WizardTwoDescription37: {
-		id: 'changeLog37.WizardTwo.description',
-		defaultMessage: 'There is also an updated settings screen to provide a better overview. The highlighted features of the '
-			+ 'installed version can be accessed from that screen as well if you wish to view them again.',
-	},
-});
+import i18n from '../../../Translations/common';
 
 type Props = {
 	intl: intlShape,
@@ -81,11 +60,14 @@ export default class WizardOne extends PureComponent<Props, null> {
 		super(props);
 		let { formatMessage } = props.intl;
 
-		this.titleWOne = formatMessage(messages.wizardOneTitle37);
-		this.descriptionWOne = formatMessage(messages.wizardOneDescription37);
+		this.titleWOne = formatMessage(i18n.labelSensorHistory);
+		this.descriptionWOne = formatMessage(i18n.wizardOneDescription38);
 
-		this.titleWTwo = formatMessage(messages.WizardTwoTitle37);
-		this.descriptionWTwo = formatMessage(messages.WizardTwoDescription37);
+		this.titleWTwo = formatMessage(i18n.wizardTwoTitle38);
+		this.descriptionWTwo = formatMessage(i18n.wizardTwoDescription38);
+
+		this.titleWThree = formatMessage(i18n.labelDeviceTypes);
+		this.descriptionWThree = formatMessage(i18n.wizardThreeDescription38);
 	}
 
 	getScreenData(currentScreen: number, deviceWidth: number): Object {
@@ -93,7 +75,7 @@ export default class WizardOne extends PureComponent<Props, null> {
 			iconTwoSize = Math.floor(deviceWidth * 0.315), iconThreeSize = Math.floor(deviceWidth * 0.315), title = '', description = '';
 		switch (currentScreen) {
 			case 1:
-				icon = 'localcontrol';
+				icon = 'sensorhistory';
 				title = this.titleWOne;
 				description = this.descriptionWOne;
 				return { icon, iconSize, iconTwoSize, iconThreeSize, title, description };
@@ -103,7 +85,7 @@ export default class WizardOne extends PureComponent<Props, null> {
 				description = this.descriptionWTwo;
 				return { icon, iconSize, iconTwoSize, iconThreeSize, title, description };
 			case 3:
-				icon = 'buttononoff';
+				icon = 'door-open';
 				iconSize = Math.floor(deviceWidth * 0.345);
 				title = this.titleWThree;
 				description = this.descriptionWThree;
@@ -137,13 +119,13 @@ export default class WizardOne extends PureComponent<Props, null> {
 
 		// IconTelldus, on setting different font sizes causing alignment issue. So, handling with negative margin.
 		return (
-			<View style={[container, {opacity: animatedOpacity, transform: [{
+			<Animated.View style={[container, {opacity: animatedOpacity, transform: [{
 				translateX: animatedX,
 			}]}]}>
 				<View style={{flexDirection: 'row', justifyContent: 'center', marginLeft: iconTwo ? -16 : 0}}>
-					{icon && <IconTelldus icon={icon} style={styles.icon} size={iconSize}/>}
-					{iconTwo && <IconTelldus icon={iconTwo} style={iconTwoStyle} size={iconTwoSize}/>}
-					{iconThree && <IconTelldus icon={iconThree} style={iconThreeStyle} size={iconThreeSize}/>}
+					{!!icon && <IconTelldus icon={icon} style={styles.icon} size={iconSize}/>}
+					{!!iconTwo && <IconTelldus icon={iconTwo} style={iconTwoStyle} size={iconTwoSize}/>}
+					{!!iconThree && <IconTelldus icon={iconThree} style={iconThreeStyle} size={iconThreeSize}/>}
 				</View>
 				<Text style={titleStyle}>
 					{title}
@@ -151,7 +133,7 @@ export default class WizardOne extends PureComponent<Props, null> {
 				<Text style={descriptionStyle}>
 					{description}
 				</Text>
-			</View>
+			</Animated.View>
 		);
 	}
 

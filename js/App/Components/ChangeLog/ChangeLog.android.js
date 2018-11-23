@@ -28,18 +28,14 @@ import { connect } from 'react-redux';
 import { intlShape, injectIntl } from 'react-intl';
 import DeviceInfo from 'react-native-device-info';
 
-import { View, FloatingButton, Text, StyleSheet } from '../../../BaseComponents';
+import { View, FloatingButton, Text, StyleSheet, NavigationHeader } from '../../../BaseComponents';
 
-import { NavigationHeader } from '../DeviceDetails/SubViews';
 import ChangeLogPoster from './SubViews/ChangeLogPoster';
 import Wizard from './SubViews/Wizard';
-const AnimatedWizard = Animated.createAnimatedComponent(Wizard);
 
 import Screens from './SubViews/Screens';
-import { getRelativeDimensions } from '../../Lib';
 import Theme from '../../Theme';
 import i18n from '../../Translations/common';
-import messages from './SubViews/messages';
 
 import { setChangeLogVersion, hideChangeLog } from '../../Actions';
 
@@ -93,11 +89,11 @@ class ChangeLogNavigator extends View {
 		let { formatMessage } = props.intl;
 
 		const appVersion = DeviceInfo.getReadableVersion();
-		this.h1 = formatMessage(messages.changeLogHeaderOne);
-		this.h2 = `${formatMessage(messages.changeLogHeaderTwo)} ${appVersion.substring(0, 3)}`;
+		this.h1 = formatMessage(i18n.changeLogHeaderOne);
+		this.h2 = `${formatMessage(i18n.changeLogHeaderTwo)} ${appVersion.substring(0, 3)}`;
 
 		this.nextButton = formatMessage(i18n.next);
-		this.skipButton = formatMessage(messages.skipButton).toUpperCase();
+		this.skipButton = formatMessage(i18n.skipButton).toUpperCase();
 		this.doneButton = formatMessage(i18n.done);
 
 		this.onPressNext = this.onPressNext.bind(this);
@@ -227,7 +223,7 @@ class ChangeLogNavigator extends View {
 		const isFirstScreen = Screens.indexOf(currentScreen) === 0;
 		const isLastScreen = Screens.indexOf(currentScreen) === Screens.length - 1;
 
-		const { stepIndicatorCover, floatingButtonLeft, checkIconStyle, textSkip, stepIndicator } = this.getStyles(appLayout);
+		const { stepIndicatorCover, floatingButtonLeft, checkIconStyle, textSkip, stepIndicator, stepIndicatorSize } = this.getStyles(appLayout);
 
 		const inputRange = width ? [-width, 0] : [-100, 0];
 		const outputRange = width ? [width, 0] : [-100, 0];
@@ -254,11 +250,11 @@ class ChangeLogNavigator extends View {
 				presentationStyle={'fullScreen'}
 				onRequestClose={this.onRequestClose}
 				supportedOrientations={['portrait', 'landscape']}>
-				<View style={{flex: 1, backgroundColor: '#EFEFF4'}} onLayout={onLayout}>
+				<View style={{flex: 1, backgroundColor: Theme.Core.appBackground}} onLayout={onLayout}>
 					<NavigationHeader showLeftIcon={false} topMargin={false}/>
 					<ChangeLogPoster h1={h1} h2={h2}/>
 					<ScrollView>
-						<AnimatedWizard
+						<Wizard
 							intl={intl}
 							currentScreen={currentScreen}
 							animatedX={animatedX}
@@ -271,7 +267,7 @@ class ChangeLogNavigator extends View {
 						</View>
 						<View style={stepIndicatorCover}>
 							{!isFirstScreen && (<FloatingButton
-								imageSource={require('../TabViews/img/right-arrow-key.png')}
+								imageSource={{uri: 'right_arrow_key'}}
 								onPress={this.onPressPrev}
 								buttonStyle={floatingButtonLeft}
 								iconStyle={styles.buttonIconStyle}/>
@@ -279,11 +275,14 @@ class ChangeLogNavigator extends View {
 							{Screens.map((screen: number, index: number): Object => {
 								let backgroundColor = Screens[index] === currentScreen ?
 									Theme.Core.brandSecondary : '#00000080';
-								return <View style={[stepIndicator, { backgroundColor }, !index && {marginLeft: 0 }]} key={index}/>;
+								return <View style={[stepIndicator, {
+									backgroundColor,
+									marginLeft: !index ? 0 : stepIndicatorSize * 0.7,
+								}]} key={index}/>;
 							})
 							}
 							<FloatingButton
-								imageSource={isLastScreen ? false : require('../TabViews/img/right-arrow-key.png')}
+								imageSource={isLastScreen ? false : {uri: 'right_arrow_key'}}
 								iconName={isLastScreen ? 'checkmark' : false}
 								iconStyle={isLastScreen ? checkIconStyle : {}}
 								onPress={this.onPressNext}
@@ -318,7 +317,6 @@ class ChangeLogNavigator extends View {
 				height: stepIndicatorSize,
 				width: stepIndicatorSize,
 				borderRadius: stepIndicatorSize / 2,
-				marginLeft: stepIndicatorSize * 0.7,
 			},
 			floatingButtonLeft: {
 				left: deviceWidth * 0.034666667,
@@ -334,6 +332,7 @@ class ChangeLogNavigator extends View {
 				textAlign: 'center',
 				fontSize: Math.floor(deviceWidth * 0.039),
 			},
+			stepIndicatorSize,
 		};
 	}
 }
@@ -350,8 +349,8 @@ const styles = StyleSheet.create({
 
 function mapStateToProps(state: Object, ownProps: Object): Object {
 	return {
-		appLayout: getRelativeDimensions(state.App.layout),
-		screenReaderEnabled: state.App.screenReaderEnabled,
+		appLayout: state.app.layout,
+		screenReaderEnabled: state.app.screenReaderEnabled,
 	};
 }
 

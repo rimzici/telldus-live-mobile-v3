@@ -21,26 +21,32 @@
 'use strict';
 
 import React from 'react';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, UIManager } from 'react-native';
 import { connect } from 'react-redux';
 import Platform from 'Platform';
 import StatusBar from 'StatusBar';
+import { LocaleConfig } from 'react-native-calendars';
+import { injectIntl } from 'react-intl';
 
 import {
 	PreLoginNavigator,
-	AppNavigator,
+	AppNavigatorRenderer,
 	Push,
 } from './App/Components';
 import ChangeLogNavigator from './App/Components/ChangeLog/ChangeLog';
-import { View } from './BaseComponents';
+import { SafeAreaView } from './BaseComponents';
 import {
 	setAppLayout,
 	setAccessibilityListener,
 	setAccessibilityInfo,
 } from './App/Actions';
+import {
+	getTranslatableDayNames,
+	getTranslatableMonthNames,
+} from './App/Lib';
 
 import Theme from './App/Theme';
-const changeLogVersion = '3.7';
+const changeLogVersion = '3.8';
 
 type Props = {
 	dispatch: Function,
@@ -49,6 +55,9 @@ type Props = {
 	pushTokenRegistered: boolean,
 	prevChangeLogVersion: string,
 	forceShowChangeLog: boolean,
+	intl: Object,
+	locale: string,
+	deviceId?: string,
 };
 
 class App extends React.Component<Props, null> {
@@ -56,10 +65,17 @@ class App extends React.Component<Props, null> {
 
 	onLayout: (Object) => void;
 	onNotification: any;
+	setCalendarLocale: () => void;
 
-	constructor() {
-		super();
+	constructor(props: Props) {
+		super(props);
 		this.onLayout = this.onLayout.bind(this);
+		this.setCalendarLocale = this.setCalendarLocale.bind(this);
+
+		this.setCalendarLocale();
+		if (Platform.OS === 'android') {
+			UIManager.setLayoutAnimationEnabledExperimental && UIManager.setLayoutAnimationEnabledExperimental(true);
+		}
 	}
 
 	componentDidMount() {
@@ -80,6 +96,18 @@ class App extends React.Component<Props, null> {
 		// Push notification listener.
 		// TODO : Remove conditional check once push in IOS is enabled and same method is present.
 		this.onNotification = Push.onNotification ? Push.onNotification() : null;
+	}
+
+	setCalendarLocale() {
+		const { intl, locale } = this.props;
+		const { formatDate } = intl;
+		LocaleConfig.locales[locale] = {
+			monthNames: getTranslatableMonthNames(formatDate, 'long'),
+			monthNamesShort: getTranslatableMonthNames(formatDate, 'short'),
+			dayNames: getTranslatableDayNames(formatDate, 'long'),
+			dayNamesShort: getTranslatableDayNames(formatDate, 'short'),
+		};
+		LocaleConfig.defaultLocale = locale;
 	}
 
 	componentDidUpdate() {
@@ -121,18 +149,18 @@ class App extends React.Component<Props, null> {
 		let hasNotLoggedIn = ((!accessToken) || (accessToken && !isTokenValid));
 
 		return (
-			<View style={{flex: 1}} onLayout={this.onLayout}>
+			<SafeAreaView onLayout={this.onLayout}>
 				{hasNotLoggedIn ?
 					<PreLoginNavigator />
 					:
-					<AppNavigator {...this.props}/>
+					<AppNavigatorRenderer {...this.props}/>
 				}
 				<ChangeLogNavigator
 					changeLogVersion={changeLogVersion}
 					showChangeLog={showChangeLog}
 					forceShowChangeLog={forceShowChangeLog}
 					onLayout={this.onLayout}/>
-			</View>
+			</SafeAreaView>
 		);
 	}
 }
@@ -144,10 +172,11 @@ function mapStateToProps(store: Object): Object {
 		isTokenValid,
 		pushTokenRegistered,
 		showChangeLog: forceShowChangeLog,
+		deviceId = null,
 	} = store.user;
 	let {
 		changeLogVersion: prevChangeLogVersion,
-	} = store.App;
+	} = store.app;
 
 	return {
 		accessToken,
@@ -156,6 +185,7 @@ function mapStateToProps(store: Object): Object {
 		pushTokenRegistered,
 		prevChangeLogVersion,
 		forceShowChangeLog,
+		deviceId,
 	};
 }
 
@@ -165,4 +195,4 @@ function mapDispatchToProps(dispatch: Function): Object {
 	};
 }
 
-module.exports = connect(mapStateToProps, mapDispatchToProps)(App);
+module.exports = connect(mapStateToProps, mapDispatchToProps)(injectIntl(App));

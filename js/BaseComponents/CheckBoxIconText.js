@@ -90,7 +90,7 @@ render(): Object {
 			style={[style, container]}
 			onPress={this.onToggleCheckBox}>
 			<IconTelldus icon={'checkmark'} style={{ ...checkIconCommon, ...checkIconStyle, ...iconStyle }}/>
-			{text && (
+			{!!text && (
 				<Text style={[textDefaultStyle, textStyle]}>
 					{text}
 				</Text>
@@ -147,7 +147,7 @@ getStyle(appLayout: Object): Object {
 
 function mapStateToProps(store: Object): Object {
 	return {
-		appLayout: store.App.layout,
+		appLayout: store.app.layout,
 	};
 }
 

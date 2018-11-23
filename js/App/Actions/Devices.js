@@ -23,31 +23,39 @@
 'use strict';
 
 import { format } from 'url';
+import { CancelToken } from 'axios';
 
 import { supportedMethods, methods } from '../../Config';
 import type { ThunkAction } from './Types';
-import { LocalApi, hasTokenExpired, refreshLocalControlToken } from '../Lib';
+import { LocalApi, hasTokenExpired, getTokenForLocalControl, LiveApi } from '../Lib';
+
+import { validateLocalControlSupport } from './Gateways';
 // Device actions that are shared by both Web and Mobile.
 import { actions } from 'live-shared-data';
 const { Devices, App } = actions;
 const { deviceSetState: deviceSetStateShared, ...otherActions } = Devices;
-const { deviceSetStateSuccess, deviceResetState, requestDeviceAction } = otherActions;
+const { deviceSetStateSuccess, deviceResetState, requestDeviceAction, getDeviceInfo } = otherActions;
 const { showToast } = App;
 
 let setStateTimeout = {};
 let setStateInterval = {};
+let requestTimeout = {};
+let infoRequestTimeout = {};
 
 function deviceSetState(deviceId: number, state: number, stateValue: number | null = null): ThunkAction {
 	return (dispatch: Function, getState: Function): any => {
 		const { gateways, devices } = getState();
-		const { clientId, clientDeviceId } = devices.byId[deviceId];
-		const { localKey } = gateways.byId[clientId];
-		const { address, key: token, ttl } = localKey;
+		const { clientId, clientDeviceId } = devices.byId[deviceId] ? devices.byId[deviceId] : {};
+		const { localKey = {} } = gateways.byId[clientId] ? gateways.byId[clientId] : {};
+		const { address, key: token, ttl, supportLocal } = localKey;
 		const tokenExpired = hasTokenExpired(ttl);
 
 		if (address && token && ttl && !tokenExpired) {
 			dispatch(requestDeviceAction(deviceId, state, true));
+
+			clearRequestTimer(clientDeviceId);
 			clearTimers(clientDeviceId);
+
 			const url = format({
 				pathname: '/device/command',
 				query: {
@@ -56,33 +64,61 @@ function deviceSetState(deviceId: number, state: number, stateValue: number | nu
 					value: stateValue,
 				},
 			});
+			const source = CancelToken.source();
 			const payload = {
 				address,
 				url,
 				requestParams: {
 					method: 'GET',
+					cancelToken: source.token,
 				},
 				token,
 			};
 
+			// Need to achieve timeout and cancel explicity because axios timeout does not work when ip is not reachable
+			// https://github.com/axios/axios/issues/647
+			requestTimeout[`${clientDeviceId}RTO`] = setTimeout(() => {
+				source.cancel();
+			}, 3000);
+
 			return LocalApi(payload).then((response: Object): any => {
+
+				clearRequestTimer(clientDeviceId);
 				clearTimers(clientDeviceId);
 				const { status } = response;
 				if (status && status === 'success') {
+
+					// 'GATEWAY_RESET_LOCAL_CONTROL_SUPPORT' has disabled 'supportLocal' property but still the local control properties
+					// are valid and works like a charm, so re-enable 'supportLocal', so that local control icon(home) will be shown.
+					if (!supportLocal) {
+						dispatch(validateLocalControlSupport(clientId, true));
+					}
 					if (state !== 32) {
 					// Every 1sec for the very next 10secs of action success, keep checking device state
 					// by calling device/info.
-						setStateTimeout[clientDeviceId] = setTimeout(() => {
-							if (setStateInterval[clientDeviceId]) {
-								clearInterval(setStateInterval[clientDeviceId]);
+						setStateTimeout[`${clientDeviceId}SSTO`] = setTimeout(() => {
+							if (setStateInterval[`${clientDeviceId}SSTI`]) {
+								clearInterval(setStateInterval[`${clientDeviceId}SSTI`]);
 							}
-							// Final device/info call, to reset the device state.
-							// Will be called after 10secs, that means device action has not been success yet(setStateTimeout not cleared).
-							dispatch(getDeviceInfoLocal(deviceId, clientDeviceId, address, token, state, true));
+
+							const { gateways: gatewaysLat } = getState();
+							const { localKey: localKeyLat = {} } = gatewaysLat.byId[clientId];
+							const { address: addressLat } = localKeyLat;
+							if (addressLat) {
+								// Final device/info call, to reset the device state.
+								// Will be called after 10secs, that means device action has not been success yet(setStateTimeout not cleared).
+								dispatch(getDeviceInfoLocal(deviceId, clientDeviceId, addressLat, token, state, true));
+							} else {
+								dispatch(requestDeviceAction(deviceId, state, false));
+								// If local address is cleared/reset do cloud check instead
+								const requestedState = methods[state];
+								dispatch(getDeviceInfo(deviceId, requestedState, LiveApi));
+								clearTimers(clientDeviceId);
+							}
 						}, 10000);
 
-						setStateInterval[clientDeviceId] = setInterval(() => {
-							const { devices: deviceLat } = getState();
+						setStateInterval[`${clientDeviceId}SSTI`] = setInterval(() => {
+							const { devices: deviceLat, gateways: gatewaysLat } = getState();
 							const device = deviceLat.byId[deviceId];
 							if (device) {
 								const { isInState } = device;
@@ -92,7 +128,13 @@ function deviceSetState(deviceId: number, state: number, stateValue: number | nu
 								if (nextState === isInState) {
 									clearTimers(clientDeviceId);
 								} else {
-									dispatch(getDeviceInfoLocal(deviceId, clientDeviceId, address, token, state, false));
+									const { localKey: localKeyLat = {} } = gatewaysLat.byId[clientId];
+									const { address: addressLat } = localKeyLat;
+									if (addressLat) {
+										dispatch(getDeviceInfoLocal(deviceId, clientDeviceId, addressLat, token, state, false));
+									}
+									// Cloud check is intentionally avoided here, as it might not be right to rely on cloud info
+									// before 10secs. Cloud check is done once, after 10secs of 'setStateTimeout'.
 								}
 							} else {
 								// clear timers and do nothing if the device is not available(LOGOUT can cause list to be reset)
@@ -104,14 +146,21 @@ function deviceSetState(deviceId: number, state: number, stateValue: number | nu
 				}
 				throw response;
 			}).catch((): any => {
+				clearRequestTimer(clientDeviceId);
 				dispatch(requestDeviceAction(deviceId, state, false));
+
+				// Can confirm that local control parameters currently present are not valid(address has changed or something)
+				// In that case, if 'supportLocal' is not disabled do it here, so that local control icon(home) will not be shown
+				if (supportLocal) {
+					dispatch(validateLocalControlSupport(clientId, false));
+				}
 				return dispatch(deviceSetStateShared(deviceId, state, stateValue));
 			});
 		} else if (ttl && tokenExpired) {
 
 			// if tokenExpired refreshes the token, do not `return` from this block, as
 			// device has to be controlled using LiveApi(the block below).
-			dispatch(refreshLocalControlToken(clientId));
+			dispatch(getTokenForLocalControl(clientId));
 		}
 		dispatch(requestDeviceAction(deviceId, state, false));
 		return dispatch(deviceSetStateShared(deviceId, state, stateValue));
@@ -119,11 +168,20 @@ function deviceSetState(deviceId: number, state: number, stateValue: number | nu
 }
 
 function clearTimers(id: number) {
-	if (setStateTimeout[id]) {
-		clearTimeout(setStateTimeout[id]);
+	if (setStateTimeout[`${id}SSTO`]) {
+		clearTimeout(setStateTimeout[`${id}SSTO`]);
 	}
-	if (setStateInterval[id]) {
-		clearInterval(setStateInterval[id]);
+	if (setStateInterval[`${id}SSTI`]) {
+		clearInterval(setStateInterval[`${id}SSTI`]);
+	}
+}
+
+function clearRequestTimer(id: number) {
+	if (requestTimeout[`${id}RTO`]) {
+		clearTimeout(requestTimeout[`${id}RTO`]);
+	}
+	if (infoRequestTimeout[`${id}IRTO`]) {
+		clearTimeout(infoRequestTimeout[`${id}IRTO`]);
 	}
 }
 
@@ -136,7 +194,7 @@ function getDeviceInfoLocal(deviceId: number, clientDeviceId: number, address: s
 				supportedMethods,
 			},
 		});
-		const payload = {
+		let payload = {
 			address,
 			url,
 			requestParams: {
@@ -144,7 +202,25 @@ function getDeviceInfoLocal(deviceId: number, clientDeviceId: number, address: s
 			},
 			token,
 		};
+
+		if (reset) {
+			const source = CancelToken.source();
+			payload = {
+				address,
+				url,
+				requestParams: {
+					method: 'GET',
+					cancelToken: source.token,
+				},
+				token,
+			};
+			infoRequestTimeout[`${clientDeviceId}IRTO`] = setTimeout(() => {
+				source.cancel();
+			}, 3000);
+		}
+
 		return LocalApi(payload).then((response: Object): any => {
+			clearRequestTimer(clientDeviceId);
 
 			// clear time interval when new state is equal to requested state.
 			if (requestState === response.state) {
@@ -183,6 +259,7 @@ function getDeviceInfoLocal(deviceId: number, clientDeviceId: number, address: s
 				dispatch(showToast());
 				dispatch(deviceResetState(data));
 				clearTimers(clientDeviceId);
+				clearRequestTimer(clientDeviceId);
 			}
 			throw err;
 		});

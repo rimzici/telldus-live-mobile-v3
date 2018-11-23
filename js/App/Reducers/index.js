@@ -26,24 +26,25 @@ import { persistCombineReducers } from 'redux-persist';
 import { AsyncStorage } from 'react-native';
 import { localStorageKey } from '../../Config';
 
+import { migrations } from '../Store';
 import Navigation from './Navigation';
 import User from './User';
-import Tabs from './Tabs';
 import LiveApi from './LiveApi';
 import Modal from './Modal';
-import sensorsList from './Sensors';
+import sensorsList from './SensorsList';
 import jobsList from './Jobs';
 import { reducers } from 'live-shared-data';
 
 const config = {
 	key: localStorageKey,
 	storage: AsyncStorage,
+	blacklist: ['dimmer', 'schedule', 'liveApi', 'navigation', 'modal'],
+	migrate: migrations,
 };
 
 module.exports = persistCombineReducers(config, {
 	navigation: Navigation,
 	user: User,
-	tabs: Tabs,
 	liveApi: LiveApi,
 	modal: Modal,
 	sensorsList,

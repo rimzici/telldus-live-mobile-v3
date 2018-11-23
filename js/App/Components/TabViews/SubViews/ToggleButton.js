@@ -23,24 +23,29 @@
 
 import React from 'react';
 import PropTypes from 'prop-types';
-import { View } from '../../../../BaseComponents';
 import { StyleSheet } from 'react-native';
+
+import { View } from '../../../../BaseComponents';
 import OnButton from './OnButton';
 import OffButton from './OffButton';
 
+import { shouldUpdate } from '../../../Lib';
 import Theme from '../../../Theme';
 
 type Props = {
 	device: Object,
 	enabled: boolean,
-	onTurnOff: number => void,
-	onTurnOn: number => void,
-	intl: Object,
 	isGatewayActive: boolean,
-	appLayout: Object,
+	isOpen: boolean,
+	actionIcons?: Object,
+
+	intl: Object,
 	style?: Object | number,
 	offButtonStyle?: number | Object | Array<any>,
 	onButtonStyle?: number | Object | Array<any>,
+	closeSwipeRow: () => void,
+	onTurnOff: number => void,
+	onTurnOn: number => void,
 };
 
 class ToggleButton extends View {
@@ -50,23 +55,67 @@ class ToggleButton extends View {
 		super(props);
 	}
 
+	shouldComponentUpdate(nextProps: Object, nextState: Object): boolean {
+
+		const { enabled, isOpen, ...others } = this.props;
+		const { enabled: enabledN, isOpen: isOpenN, ...othersN } = nextProps;
+		if (enabled !== enabledN || isOpen !== isOpenN) {
+			return true;
+		}
+
+		const propsChange = shouldUpdate(others, othersN, ['actionIcons', 'device']);
+		if (propsChange) {
+			return true;
+		}
+
+		return false;
+	}
+
 	render(): Object {
-		const { intl, device, isGatewayActive, style, onButtonStyle, offButtonStyle } = this.props;
+		const {
+			intl,
+			device,
+			isGatewayActive,
+			style,
+			onButtonStyle,
+			offButtonStyle,
+			isOpen,
+			closeSwipeRow,
+			actionIcons = {},
+		} = this.props;
 		const { TURNON, TURNOFF } = device.supportedMethods;
 		const { id, isInState, methodRequested, name, local } = device;
 		const width = Theme.Core.buttonWidth;
 
-		const onButton = <OnButton id={id} name={name} isInState={isInState} enabled={!!TURNON}
+		const sharedProps = {
+			id,
+			name,
+			isInState,
+			methodRequested,
+			isGatewayActive,
+			local,
+			isOpen,
+			closeSwipeRow,
+			intl,
+		};
+
+		const onButton = <OnButton
+			{...sharedProps}
+			enabled={isOpen || !!TURNON}
 			style={[styles.turnOn, TURNON ? {width} : {width: width * 2}, onButtonStyle]}
-			methodRequested={methodRequested} intl={intl} isGatewayActive={isGatewayActive} local={local}/>;
-		const offButton = <OffButton id={id} name={name} isInState={isInState} enabled={!!TURNOFF}
+			actionIcon={actionIcons.TURNON}
+		/>;
+		const offButton = <OffButton
+			{...sharedProps}
+			enabled={isOpen || !!TURNOFF}
 			style={[styles.turnOff, TURNOFF ? {width} : {width: width * 2}, offButtonStyle]}
-			methodRequested={methodRequested} intl={intl} isGatewayActive={isGatewayActive} local={local}/>;
+			actionIcon={actionIcons.TURNOFF}
+		/>;
 
 		return (
 			<View style={style}>
-				{(TURNOFF || (!TURNOFF && isInState === 'TURNOFF')) && offButton }
-				{(TURNON || (!TURNON && isInState === 'TURNON')) && onButton }
+				{(!!TURNOFF || (!TURNOFF && isInState === 'TURNOFF')) && offButton }
+				{(!!TURNON || (!TURNON && isInState === 'TURNON')) && onButton }
 			</View>
 		);
 	}
@@ -84,6 +133,9 @@ const styles = StyleSheet.create({
 		height: Theme.Core.rowHeight,
 		justifyContent: 'center',
 		alignItems: 'center',
+	},
+	iconStyleLarge: {
+		fontSize: 38,
 	},
 });
 

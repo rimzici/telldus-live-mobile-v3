@@ -24,7 +24,7 @@
 import React from 'react';
 import { connect } from 'react-redux';
 
-import { Icon, View } from '../../../../../BaseComponents';
+import { IconTelldus, View } from '../../../../../BaseComponents';
 import { StyleSheet, TouchableOpacity } from 'react-native';
 
 import ButtonLoadingIndicator from '../ButtonLoadingIndicator';
@@ -46,6 +46,8 @@ type Props = {
 	iconSize: number,
 	style: Object | Array<any> | number,
 	local: boolean,
+	isOpen: boolean,
+	closeSwipeRow: () => void,
 };
 
 class StopButton extends View {
@@ -61,7 +63,12 @@ class StopButton extends View {
 		this.labelStopButton = `${props.intl.formatMessage(i18n.stop)} ${props.intl.formatMessage(i18n.button)}`;
 	}
 	onStop() {
-		this.props.deviceSetState(this.props.id, this.props.commandStop);
+		const { commandStop, id, isOpen, closeSwipeRow } = this.props;
+		if (isOpen && closeSwipeRow) {
+			closeSwipeRow();
+			return;
+		}
+		this.props.deviceSetState(id, commandStop);
 	}
 
 	render(): Object {
@@ -75,14 +82,14 @@ class StopButton extends View {
 			(isInState === 'STOP' ? styles.offlineBackground : styles.disabledBackground) : (isInState === 'STOP' ? styles.enabledBackgroundStop : styles.disabledBackground);
 		let stopIconColor = !isGatewayActive ?
 			(isInState === 'STOP' ? '#fff' : '#a2a2a2') : (isInState === 'STOP' ? '#fff' : Theme.Core.brandPrimary);
-		let dotColor = local ? Theme.Core.brandPrimary : Theme.Core.brandSecondary;
+		let dotColor = isInState === methodRequested ? '#fff' : local ? Theme.Core.brandPrimary : Theme.Core.brandSecondary;
 
 		return (
 			<TouchableOpacity
 				style={[stopButtonStyle, style]}
 				onPress={supportedMethod ? this.onStop : noop}
 				accessibilityLabel={`${this.labelStopButton}, ${name}`}>
-				<Icon name="stop" size={iconSize}
+				<IconTelldus icon="stop" size={iconSize}
 					style={{
 						color: supportedMethod ? stopIconColor : '#eeeeee',
 					}}

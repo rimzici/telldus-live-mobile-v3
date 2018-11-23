@@ -38,11 +38,11 @@ const Push = {
 	},
 	onRegister: (token: string, params: Object): ThunkAction => {
 		return (dispatch: Function, getState: Object): any => {
-			Alert.alert('TOKEN :', token);
-			const { pushToken, pushTokenRegistered } = params;
+			const { pushToken, pushTokenRegistered, deviceId } = params;
 			if ((!pushToken) || (pushToken !== token) || (!pushTokenRegistered)) {
-			// stores fcm token in the server
-				dispatch(registerPushToken(token, DeviceInfo.getDeviceName(), DeviceInfo.getModel(), DeviceInfo.getManufacturer(), DeviceInfo.getSystemVersion(), DeviceInfo.getUniqueID(), pushServiceId));
+				const deviceUniqueId = deviceId ? deviceId : DeviceInfo.getUniqueID();
+				// stores fcm token in the server
+				dispatch(registerPushToken(token, DeviceInfo.getDeviceName(), DeviceInfo.getModel(), DeviceInfo.getManufacturer(), DeviceInfo.getSystemVersion(), deviceUniqueId, pushServiceId));
 				dispatch({ type: 'RECEIVED_PUSH_TOKEN', pushToken: token });
 			}
 		};
@@ -56,12 +56,10 @@ const Push = {
 		PushNotificationIOS.removeEventListener('notification');
 		PushNotificationIOS.removeEventListener('register');
 	},
-	createLocalNotification: (data: Object) => {
-		const notif = JSON.stringify(data);
-		Alert.alert('NOTIFICATION :', notif);
+	createLocalNotification: (notification: Object) => {
 		// 	// On iOS, if the app is in foreground the local notification is not shown.
 		// 	// We use normal alert instead
-		// Alert.alert('Telldus Live!', data.message);
+		Alert.alert('Telldus Live!', notification.getMessage());
 	},
 };
 

@@ -22,16 +22,12 @@
 'use strict';
 
 import React from 'react';
-import PropTypes from 'prop-types';
 import { BackHandler } from 'react-native';
 import { bindActionCreators } from 'redux';
 import { connect } from 'react-redux';
-import _ from 'lodash';
-import { intlShape, injectIntl } from 'react-intl';
+const isEqual = require('react-fast-compare');
 
-import { FullPageActivityIndicator, View, DialogueBox } from '../../../BaseComponents';
-import { SchedulePoster } from './SubViews';
-import { getRelativeDimensions } from '../../Lib';
+import { FullPageActivityIndicator, View, DialogueBox, NavigationHeaderPoster } from '../../../BaseComponents';
 import Theme from '../../Theme';
 
 import * as scheduleActions from '../../Actions/Schedule';
@@ -41,15 +37,17 @@ import { showToast } from '../../Actions/App';
 import { getJobs } from '../../Actions';
 import type { Schedule } from '../../Reducers/Schedule';
 
+import shouldUpdate from '../../Lib/shouldUpdate';
+
 type Props = {
-	navigation: Object,
-	children: Object,
+	gateways: Object,
 	schedule?: Schedule,
 	actions?: Object,
-	devices?: Object,
+	devices: Object,
 	screenProps: Object,
-	intl: intlShape.isRequired,
-	appLayout: Object,
+
+	navigation: Object,
+	children: Object,
 };
 
 type State = {
@@ -67,22 +65,11 @@ export interface ScheduleProps {
 	loading: (loading: boolean) => void,
 	isEditMode: () => boolean,
 	devices: Object,
-	intl: Object,
-	appLayout: Object,
 }
 
 class ScheduleScreen extends View<null, Props, State> {
 
 	handleBackPress: () => void;
-
-	static propTypes = {
-		navigation: PropTypes.object.isRequired,
-		children: PropTypes.object.isRequired,
-		schedule: PropTypes.object,
-		actions: PropTypes.objectOf(PropTypes.func),
-		devices: PropTypes.object,
-		screenProps: PropTypes.object,
-	};
 
 	state = {
 		h1: '',
@@ -112,20 +99,30 @@ class ScheduleScreen extends View<null, Props, State> {
 	}
 
 	handleBackPress(): boolean {
-		let {navigation, screenProps} = this.props;
-		if (screenProps.currentScreen === 'InitialScreen') {
-			screenProps.rootNavigator.goBack();
-			return true;
-		}
-		navigation.dispatch({ type: 'Navigation/BACK'});
+		let { navigation } = this.props;
+		navigation.pop();
 		return true;
 	}
 
 
 	shouldComponentUpdate(nextProps: Props, nextState: State): boolean {
-		const isStateEqual = _.isEqual(this.state, nextState);
-		const isPropsEqual = _.isEqual(this.props, nextProps);
-		return !(isStateEqual && isPropsEqual);
+		const isStateEqual = isEqual(this.state, nextState);
+		if (!isStateEqual) {
+			return true;
+		}
+		const { gateways, devices, screenProps, ...otherProps } = this.props;
+		const { gateways: gatewaysN, devices: devicesN, screenProps: screenPropsN, ...otherPropsN } = nextProps;
+		if ((Object.keys(gateways.byId).length !== Object.keys(gatewaysN.byId).length) || (Object.keys(devices.byId).length !== Object.keys(devicesN.byId).length)) {
+			return true;
+		}
+		if (screenProps.currentScreen !== screenPropsN.currentScreen) {
+			return true;
+		}
+		const propsChange = shouldUpdate(otherProps, otherPropsN, ['schedule']);
+		if (propsChange) {
+			return true;
+		}
+		return false;
 	}
 
 	goBack = () => {
@@ -149,22 +146,62 @@ class ScheduleScreen extends View<null, Props, State> {
 	};
 
 	getRelativeData = (): Object => {
-		let {modalExtras} = this.props;
+		const { modalExtras } = this.props;
+		const {
+			dialogueHeader = false,
+			showPositive = true,
+			showNegative = false,
+			positiveText = null,
+			onPressPositive = this.closeModal,
+			onPressNegative = this.closeModal,
+			imageHeader = false,
+			showIconOnHeader = false,
+			onPressHeader = this.closeModal,
+			onPressHeaderIcon = this.closeModal,
+		} = modalExtras;
 		return {
-			dialgueHeader: modalExtras.dialogueHeader ? modalExtras.dialogueHeader : false,
-			showNegative: modalExtras.showNegative ? true : false,
-			positiveText: modalExtras.positiveText ? modalExtras.positiveText : false,
-			onPressPositive: modalExtras.onPressPositive ? modalExtras.onPressPositive : this.closeModal,
-			onPressNegative: modalExtras.onPressNegative ? modalExtras.onPressNegative : this.closeModal,
+			dialogueHeader,
+			showPositive,
+			showNegative,
+			positiveText,
+			onPressPositive,
+			onPressNegative,
 			dialogueContainerStyle: {backgroundColor: '#00000099'},
+			imageHeader,
+			showIconOnHeader,
+			onPressHeader,
+			onPressHeaderIcon,
 		};
 	};
 
 	render(): React$Element<any> {
-		const { children, navigation, actions, devices, schedule, screenProps, intl, appLayout } = this.props;
+		const {
+			children,
+			navigation,
+			actions,
+			devices,
+			schedule,
+			screenProps,
+			gateways,
+		} = this.props;
+		const {
+			appLayout,
+		} = screenProps;
 		const { h1, h2, infoButton, loading } = this.state;
 		const { style, modal } = this._getStyle(appLayout);
-		const { dialgueHeader, showNegative, positiveText, onPressPositive, onPressNegative, dialogueContainerStyle} = this.getRelativeData();
+		const {
+			dialogueHeader,
+			showPositive,
+			showNegative,
+			positiveText,
+			onPressPositive,
+			onPressNegative,
+			dialogueContainerStyle,
+			imageHeader,
+			showIconOnHeader,
+			onPressHeader,
+			onPressHeaderIcon,
+		} = this.getRelativeData();
 
 		return (
 			<View>
@@ -175,8 +212,13 @@ class ScheduleScreen extends View<null, Props, State> {
 					flex: 1,
 					opacity: loading ? 0 : 1,
 				}}>
-					<SchedulePoster h1={h1} h2={h2} infoButton={infoButton} screenProps={screenProps} navigation={navigation}
-						intl={intl} appLayout={appLayout}/>
+					<NavigationHeaderPoster
+						h1={h1} h2={h2}
+						infoButton={infoButton}
+						align={'right'}
+						navigation={navigation}
+						{...screenProps}
+						leftIcon={screenProps.currentScreen === 'InitialScreen' ? 'close' : undefined}/>
 					<View style={style}>
 						{React.cloneElement(
 							children,
@@ -190,8 +232,7 @@ class ScheduleScreen extends View<null, Props, State> {
 								loading: this.loading,
 								isEditMode: this._isEditMode,
 								...screenProps,
-								appLayout,
-								intl,
+								gateways,
 							},
 						)}
 					</View>
@@ -199,21 +240,26 @@ class ScheduleScreen extends View<null, Props, State> {
 						showDialogue={this.props.showModal}
 						modalStyle={modal}
 						dialogueContainerStyle={dialogueContainerStyle}
-						header={dialgueHeader}
+						header={dialogueHeader}
 						text={this.props.validationMessage}
-						showPositive={true}
+						showPositive={showPositive}
 						showNegative={showNegative}
 						positiveText={positiveText}
 						onPressPositive={onPressPositive}
-						onPressNegative={onPressNegative}/>
+						onPressNegative={onPressNegative}
+						imageHeader={imageHeader}
+						showIconOnHeader={showIconOnHeader}
+						onPressHeader={onPressHeader}
+						onPressHeaderIcon={onPressHeaderIcon}/>
 				</View>
 			</View>
 		);
 	}
 
 	_isEditMode = (): boolean => {
-		const { params } = this.props.navigation.state;
-		return params && params.editMode;
+		const { navigation } = this.props;
+		const editMode = navigation.getParam('editMode', false);
+		return editMode;
 	};
 
 	_getStyle = (appLayout: Object): Object => {
@@ -223,15 +269,15 @@ class ScheduleScreen extends View<null, Props, State> {
 		const deviceHeight = isPortrait ? height : width;
 		const padding = deviceWidth * Theme.Core.paddingFactor;
 
-		let { state } = this.props.screenProps.rootNavigator;
+		const { navigation } = this.props;
+		const editMode = navigation.getParam('editMode', false);
 
-		const notEdit = (this.props.screenProps.currentScreen === 'InitialScreen' && !state.params.editMode)
+		const notEdit = (this.props.screenProps.currentScreen === 'InitialScreen' && (!editMode))
 			|| this.props.screenProps.currentScreen !== 'InitialScreen';
 		return {
 			style: {
 				flex: 1,
 				paddingHorizontal: notEdit ? padding : 0,
-				paddingVertical: padding - (padding / 4),
 			},
 			modal: {
 				alignSelf: 'center',
@@ -246,17 +292,18 @@ type mapStateToPropsType = {
 	schedule: Schedule,
 	devices: Object,
 	modal: Object,
-	App: Object,
+	app: Object,
+	gateways: Object,
 };
 
-const mapStateToProps = ({ schedule, devices, modal, App }: mapStateToPropsType): Object => (
+const mapStateToProps = ({ schedule, devices, modal, app, gateways }: mapStateToPropsType): Object => (
 	{
 		schedule,
 		devices,
+		gateways,
 		validationMessage: modal.data,
 		showModal: modal.openModal,
 		modalExtras: modal.extras,
-		appLayout: getRelativeDimensions(App.layout),
 	}
 );
 
@@ -269,4 +316,4 @@ const mapDispatchToProps = (dispatch: Function): Object => (
 	}
 );
 
-export default connect(mapStateToProps, mapDispatchToProps)(injectIntl(ScheduleScreen));
+export default connect(mapStateToProps, mapDispatchToProps)(ScheduleScreen);

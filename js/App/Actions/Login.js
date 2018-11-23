@@ -45,6 +45,7 @@ const loginToTelldus = (username: string, password: string): ThunkAction => (dis
 			'grant_type': 'password',
 			'username': username,
 			'password': password,
+			'scope': 'live-app',
 		},
 	  })
 		.then((response: Object): Object => {
@@ -79,13 +80,18 @@ function getUserProfile(): ThunkAction {
 				method: 'GET',
 			},
 		};
-		return LiveApi(payload).then((response: Object): Function => dispatch({
-			type: 'RECEIVED_USER_PROFILE',
-			payload: {
-				...payload,
-				...response,
-			},
-		}));
+		return dispatch(LiveApi(payload)).then((response: Object): Object => {
+			dispatch({
+				type: 'RECEIVED_USER_PROFILE',
+				payload: {
+					...payload,
+					...response,
+				},
+			});
+			return response;
+		}).catch((err: any) => {
+			throw err;
+		});
 	};
 }
 

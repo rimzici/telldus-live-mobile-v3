@@ -25,6 +25,9 @@ import PropTypes from 'prop-types';
 import { View, IconTelldus } from '../../../../BaseComponents';
 import { StyleSheet, Animated } from 'react-native';
 import ButtonLoadingIndicator from './ButtonLoadingIndicator';
+const isEqual = require('react-fast-compare');
+
+import shouldUpdate from '../../../Lib/shouldUpdate';
 
 import i18n from '../../../Translations/common';
 import Theme from '../../../Theme';
@@ -67,6 +70,21 @@ class DimmerOnButton extends View {
 		this.labelOnButton = `${props.intl.formatMessage(i18n.on)} ${props.intl.formatMessage(i18n.button)}`;
 	}
 
+	shouldComponentUpdate(nextProps: Object, nextState: Object): boolean {
+		const isStateEqual = isEqual(this.state, nextState);
+		if (!isStateEqual) {
+			return true;
+		}
+		const propsChange = shouldUpdate(this.props, nextProps, [
+			'isInState', 'methodRequested', 'name', 'isGatewayActive', 'enabled', 'local',
+		]);
+		if (propsChange) {
+			return true;
+		}
+
+		return false;
+	}
+
 	onPress() {
 		let { onPress } = this.props;
 		if (onPress) {
@@ -81,7 +99,7 @@ class DimmerOnButton extends View {
 			(isInState === 'TURNON' ? styles.offline : styles.disabled) : (isInState === 'TURNON' ? styles.enabled : styles.disabled);
 		let iconColor = !isGatewayActive ?
 			(isInState === 'TURNON' ? '#fff' : '#a2a2a2') : (isInState === 'TURNON' ? '#fff' : Theme.Core.brandSecondary);
-		let dotColor = local ? Theme.Core.brandPrimary : Theme.Core.brandSecondary;
+		let dotColor = isInState === methodRequested ? '#fff' : local ? Theme.Core.brandPrimary : Theme.Core.brandSecondary;
 
 		return (
 			<View

@@ -24,23 +24,27 @@
 import React from 'react';
 import { connect } from 'react-redux';
 
-import { View, Icon } from '../../../../BaseComponents';
+import { View, IconTelldus } from '../../../../BaseComponents';
 import { TouchableOpacity, StyleSheet } from 'react-native';
 import { deviceSetState } from '../../../Actions/Devices';
 import ButtonLoadingIndicator from './ButtonLoadingIndicator';
+
+import { shouldUpdate } from '../../../Lib';
 import i18n from '../../../Translations/common';
 import Theme from '../../../Theme';
 
 type Props = {
-	device: Object,
-	deviceSetState: (id: number, command: number, value?: number) => void,
-	style: Object,
 	command: number,
-	intl: Object,
+
+	device: Object,
+	isOpen: boolean,
+
 	isGatewayActive: boolean,
-	appLayout: Object,
+	intl: Object,
+	style: Object,
 	bellButtonStyle: number | Object,
-	local: boolean,
+	closeSwipeRow: () => void,
+	deviceSetState: (id: number, command: number, value?: number) => void,
 };
 
 class BellButton extends View {
@@ -55,8 +59,29 @@ class BellButton extends View {
 		this.labelBellButton = `${props.intl.formatMessage(i18n.bell)} ${props.intl.formatMessage(i18n.button)}`;
 	}
 
+	shouldComponentUpdate(nextProps: Object, nextState: Object): boolean {
+
+		const { isOpen, ...others } = this.props;
+		const { isOpenN, ...othersN } = nextProps;
+		if (isOpen !== isOpenN) {
+			return true;
+		}
+
+		const propsChange = shouldUpdate(others, othersN, ['device']);
+		if (propsChange) {
+			return true;
+		}
+
+		return false;
+	}
+
 	onBell() {
-		this.props.deviceSetState(this.props.device.id, this.props.command);
+		const { command, device, isOpen, closeSwipeRow } = this.props;
+		if (isOpen && closeSwipeRow) {
+			closeSwipeRow();
+			return;
+		}
+		this.props.deviceSetState(device.id, command);
 	}
 
 	render(): Object {
@@ -68,7 +93,7 @@ class BellButton extends View {
 
 		return (
 			<TouchableOpacity onPress={this.onBell} style={[styles.bell, this.props.style, bellButtonStyle]} accessibilityLabel={accessibilityLabel}>
-				<Icon name="bell" size={22} color={iconColor} />
+				<IconTelldus icon="bell" size={22} color={iconColor} />
 
 				{
 					methodRequested === 'BELL' ?

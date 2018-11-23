@@ -25,10 +25,11 @@
 import type { Action, ThunkAction } from './Types';
 
 import { AppState } from 'react-native';
-import Orientation from 'react-native-orientation';
+import Orientation from 'react-native-orientation-locker';
 import { AccessibilityInfo } from 'react-native';
 
-import { resetLocalControlIP, autoDetectLocalTellStick } from './Gateways';
+import { resetLocalControlSupport, autoDetectLocalTellStick, closeUDPSocket } from './Gateways';
+import { initiateGatewayLocalTest } from './LocalTest';
 
 module.exports = {
 	appStart: (): Action => ({
@@ -40,13 +41,15 @@ module.exports = {
 				dispatch({
 					type: 'APP_FOREGROUND',
 				});
+				dispatch(initiateGatewayLocalTest());
 				dispatch(autoDetectLocalTellStick());
 			}
 			if (appState === 'background') {
 				dispatch({
 					type: 'APP_BACKGROUND',
 				});
-				dispatch(resetLocalControlIP());
+				dispatch(resetLocalControlSupport());
+				closeUDPSocket();
 			}
 		});
 	},
