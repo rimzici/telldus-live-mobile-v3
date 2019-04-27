@@ -69,6 +69,7 @@ type DefaultProps = {
     showBackButton: boolean,
 	align: 'right' | 'center',
 	showLeftIcon: boolean,
+	leftIcon: string,
 };
 
 type State = {
@@ -84,6 +85,7 @@ static defaultProps: DefaultProps = {
 	showBackButton: true,
 	align: 'center',
 	showLeftIcon: true,
+	leftIcon: Platform.OS === 'ios' ? 'angle-left' : 'arrow-back',
 };
 
 goBack: () => void;
@@ -240,15 +242,15 @@ render(): Object {
 							</Text>
 						)}
 					</View>
-					{adjustItems && showBackButton && (
+					{adjustItems && showBackButton && showLeftIcon && (
 						<TouchableOpacity
 							style={styles.backButtonLand}
 							onPress={this.goBack}
 							accessibilityLabel={this.labelLeftIcon}>
-							{Platform.OS === 'ios' ?
-								<FontAwesome name="angle-left" size={width * 0.047} color="#fff"/>
+							{Platform.OS === 'ios' && leftIcon !== 'close' ?
+								<FontAwesome name={leftIcon} size={width * 0.047} color="#fff"/>
 								:
-								<Icon name="arrow-back" size={width * 0.047} color="#fff"/>
+								<Icon name={leftIcon} size={width * 0.047} color="#fff"/>
 							}
 						</TouchableOpacity>
 					)}
@@ -267,7 +269,7 @@ getStyles(appLayout: Object, adjustItems: boolean): Object {
 	const deviceWidth = isPortrait ? width : height;
 
 	const posterHeight = adjustItems ? deviceWidth * 0.155 : deviceWidth * 0.311;
-	const iconBackgroundSize = posterHeight * 0.6;
+	const iconBackgroundSize = posterHeight * 0.55;
 	const fontSizeIcon = posterHeight * 0.4;
 
 	const fontSizeH1 = adjustItems ? posterHeight * 0.42
@@ -322,6 +324,7 @@ getStyles(appLayout: Object, adjustItems: boolean): Object {
 			height: iconBackgroundSize,
 			borderRadius: iconBackgroundSize / 2,
 			marginRight: isPortrait ? 0 : 10,
+			marginBottom: 3,
 		},
 		iconStyle: {
 			fontSize: fontSizeIcon,

@@ -22,7 +22,7 @@
 'use strict';
 
 import React from 'react';
-import { Image, TouchableOpacity, Linking, SectionList, ScrollView, RefreshControl } from 'react-native';
+import { Image, TouchableOpacity, Linking, SectionList, RefreshControl, LayoutAnimation } from 'react-native';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
 import Platform from 'Platform';
@@ -40,10 +40,10 @@ import { DimmerControlInfo } from './SubViews/Device';
 
 import { getDevices, setIgnoreDevice } from '../../Actions/Devices';
 
-import { getTabBarIcon } from '../../Lib';
+import { getTabBarIcon, LayoutAnimations } from '../../Lib';
 
 import { parseDevicesForListView } from '../../Reducers/Devices';
-import { addNewGateway, showToast } from '../../Actions';
+import { addNewGateway, showToast, getGateways } from '../../Actions';
 import i18n from '../../Translations/common';
 import Theme from '../../Theme';
 
@@ -88,12 +88,28 @@ class DevicesTab extends View {
 	onDismissDialogueHide: () => void;
 	onConfirmDialogueHide: () => void;
 
+	addNewDevice: () => void;
 	showDimInfo: (Object) => void;
+	handleAddDeviceAttentionCapture: () => void;
 
-	static navigationOptions = ({navigation, screenProps}: Object): Object => ({
-		title: screenProps.intl.formatMessage(i18n.devices),
-		tabBarIcon: ({ focused, tintColor }: Object): Object => getTabBarIcon(focused, tintColor, 'devices'),
-	});
+	onNewlyAddedDidMount: (id: number, clientId: string) => void;
+
+	setRef: (any) => void;
+	listView: any;
+
+	onPressDeviceAction: () => void;
+
+	defaultDescriptionButton: string;
+	static navigationOptions = ({navigation, screenProps}: Object): Object => {
+		const { intl, currentScreen } = screenProps;
+		const { formatMessage } = intl;
+		const postScript = currentScreen === 'Devices' ? formatMessage(i18n.labelActive) : formatMessage(i18n.defaultDescriptionButton);
+		return {
+			title: formatMessage(i18n.devices),
+			tabBarIcon: ({ focused, tintColor }: Object): Object => getTabBarIcon(focused, tintColor, 'devices'),
+			tabBarAccessibilityLabel: `${formatMessage(i18n.devicesTab)}, ${postScript}`,
+		};
+	};
 
 	constructor(props: Props) {
 		super(props);
@@ -129,6 +145,7 @@ class DevicesTab extends View {
 		this.closeVisibleRows = this.closeVisibleRows.bind(this);
 		this.onDismissDialogueHide = this.onDismissDialogueHide.bind(this);
 		this.onConfirmDialogueHide = this.onConfirmDialogueHide.bind(this);
+		this.addNewDevice = this.addNewDevice.bind(this);
 
 		let { formatMessage } = props.screenProps.intl;
 
@@ -142,21 +159,82 @@ class DevicesTab extends View {
 		this.url = 'http://live.telldus.com/';
 		this.noDeviceTitle = formatMessage(i18n.messageNoDeviceTitle);
 		this.noGatewayTitle = formatMessage(i18n.messageNoGatewayTitle);
-		this.noDeviceContent = formatMessage(i18n.messageNoDeviceContent);
+		this.noDeviceContent = formatMessage(i18n.messageNoDeviceContentAddZ);
 		this.noGatewayContent = formatMessage(i18n.messageNoGatewayContent);
 
 		const labelDevice = formatMessage(i18n.labelDevice).toLowerCase();
 		this.headerOnHide = formatMessage(i18n.headerOnHide, { type: labelDevice });
 		this.messageOnHide = formatMessage(i18n.messageOnHide, { type: labelDevice });
 		this.labelHide = formatMessage(i18n.hide).toUpperCase();
+		this.defaultDescriptionButton = formatMessage(i18n.defaultDescriptionButton);
 
 		this.showDimInfo = this.showDimInfo.bind(this);
+		this.handleAddDeviceAttentionCapture = this.handleAddDeviceAttentionCapture.bind(this);
+		this.setRef = this.setRef.bind(this);
+		this.listView = null;
+
+		this.onNewlyAddedDidMount = this.onNewlyAddedDidMount.bind(this);
+		this.timeoutNormalizeNewlyAdded = null;
+		this.timeoutScrollToHidden = null;
+
+		this.onPressDeviceAction = this.onPressDeviceAction.bind(this);
+
+		this.hideAttentionCaptureTimeout = null;
+		this.attentionCapture = false;
+	}
+
+	componentDidMount() {
+		this.handleAddDeviceAttentionCapture();
+		this.normalizeNewlyAddedUITimeout();
 	}
 
 	shouldComponentUpdate(nextProps: Object, nextState: Object): boolean {
 		const { currentScreen } = nextProps.screenProps;
 		const { currentScreen: prevScreen } = this.props.screenProps;
 		return (currentScreen === 'Devices') || (currentScreen !== 'Devices' && prevScreen === 'Devices');
+	}
+
+	componentDidUpdate() {
+		this.handleAddDeviceAttentionCapture();
+		this.normalizeNewlyAddedUITimeout();
+	}
+
+	componentWillUnmount() {
+		clearTimeout(this.timeoutNormalizeNewlyAdded);
+		clearTimeout(this.timeoutScrollToHidden);
+		clearTimeout(this.hideAttentionCaptureTimeout);
+	}
+
+	setRef(ref: any) {
+		this.listView = ref;
+	}
+
+	handleAddDeviceAttentionCapture() {
+		const { devicesDidFetch, devices, screenProps } = this.props;
+		const { toggleAttentionCapture, showAttentionCaptureAddDevice } = screenProps;
+
+		const allowToggleLocal = !this.attentionCapture;
+		if (devices.length === 0 && devicesDidFetch && toggleAttentionCapture && !showAttentionCaptureAddDevice && allowToggleLocal) {
+			this.attentionCapture = true;
+			toggleAttentionCapture(true);
+			this.startHideAttentionCaptureTimeout();
+		}
+
+		if (devices.length > 0 && devicesDidFetch && showAttentionCaptureAddDevice && toggleAttentionCapture) {
+			toggleAttentionCapture(false);
+		}
+	}
+
+	startHideAttentionCaptureTimeout() {
+		if (!this.hideAttentionCaptureTimeout) {
+			this.hideAttentionCaptureTimeout = setTimeout(() => {
+				const { screenProps } = this.props;
+				const { showAttentionCaptureAddDevice, toggleAttentionCapture } = screenProps;
+				if (toggleAttentionCapture && showAttentionCaptureAddDevice) {
+					toggleAttentionCapture(false);
+				}
+			}, 10000);
+		}
 	}
 
 	openDeviceDetail(device: Object) {
@@ -236,16 +314,19 @@ class DevicesTab extends View {
 		this.setState({
 			isRefreshing: true,
 		});
-		this.props.dispatch(getDevices())
-			.then(() => {
-				this.setState({
-					isRefreshing: false,
-				});
-			}).catch(() => {
-				this.setState({
-					isRefreshing: false,
-				});
+		let promises = [
+			this.props.dispatch(getGateways()),
+			this.props.dispatch(getDevices()),
+		];
+		Promise.all(promises).then(() => {
+			this.setState({
+				isRefreshing: false,
 			});
+		}).catch(() => {
+			this.setState({
+				isRefreshing: false,
+			});
+		});
 	}
 
 	keyExtractor(item: Object): number {
@@ -288,8 +369,33 @@ class DevicesTab extends View {
 	}
 
 	toggleHiddenList() {
+		const { rowsAndSections } = this.props;
+		const { hiddenList, visibleList } = rowsAndSections;
+
+		LayoutAnimation.configureNext(LayoutAnimations.linearCUD(300), () => {
+			// Callback only available in iOS
+			LayoutAnimation.configureNext(null);
+		});
 		this.setState({
 			showHiddenList: !this.state.showHiddenList,
+		}, () => {
+			const { showHiddenList } = this.state;
+			if (showHiddenList && hiddenList.length > 0 && visibleList.length > 0) {
+				this.timeoutScrollToHidden = setTimeout(() => {
+					if (this.listView) {
+						this.listView.scrollToLocation({
+							animated: true,
+							sectionIndex: visibleList.length - 1,
+							itemIndex: 0,
+							viewPosition: 0.7,
+						});
+					}
+				}, 500);
+			}
+			if (Platform.OS === 'android') {
+				// Since LayoutAnimationEnd Callback only available in iOS
+				LayoutAnimation.configureNext(null);
+			}
 		});
 	}
 
@@ -401,19 +507,26 @@ class DevicesTab extends View {
 		);
 	}
 
-	toggleHiddenListButton(style: Object): Object {
+	toggleHiddenListButton(): Object {
 		const { screenProps } = this.props;
-		const accessible = screenProps.currentScreen === 'Sensors';
+		const accessible = screenProps.currentScreen === 'Devices';
+		const style = this.getStyles(screenProps.appLayout);
+
+		const { showHiddenList } = this.state;
+		const accessibilityLabelOne = showHiddenList ? this.hideHidden : this.showHidden;
+		const accessibilityLabel = `${accessibilityLabelOne}, ${this.defaultDescriptionButton}`;
+
 		return (
 			<TouchableOpacity
 				style={style.toggleHiddenListButton}
 				onPress={this.toggleHiddenList}
 				accessible={accessible}
-				importantForAccessibility={accessible ? 'yes' : 'no-hide-descendants'}>
+				importantForAccessibility={accessible ? 'yes' : 'no-hide-descendants'}
+				accessibilityLabel={accessibilityLabel}>
 				<IconTelldus icon="hidden" style={style.toggleHiddenListIcon}
 					importantForAccessibility="no" accessible={false}/>
-				<Text style={style.toggleHiddenListText} accessible={accessible}>
-					{this.state.showHiddenList ?
+				<Text style={style.toggleHiddenListText} accessible={false}>
+					{showHiddenList ?
 						this.hideHidden
 						:
 						this.showHidden
@@ -423,27 +536,47 @@ class DevicesTab extends View {
 		);
 	}
 
-	renderSectionHeader(sectionData: Object): Object {
+	renderSectionHeader(sectionData: Object): Object | null {
 		const { supportLocalControl, isOnline, websocketOnline } = sectionData.section.data[0];
+		if (sectionData.section.header === Theme.Core.buttonRowKey) {
+			return null;
+		}
+
+		const { screenProps } = this.props;
 
 		return (
 			<DeviceHeader
-				gateway={sectionData.section.key}
-				appLayout={this.props.screenProps.appLayout}
+				gateway={sectionData.section.header}
+				appLayout={screenProps.appLayout}
+				intl={screenProps.intl}
 				supportLocalControl={supportLocalControl}
 				isOnline={isOnline}
 				websocketOnline={websocketOnline}
+				accessible={screenProps.currentScreen === 'Devices'}
 			/>
 		);
 	}
 
 	renderRow(row: Object): Object {
-		const { screenProps } = this.props;
+		const { screenProps, navigation } = this.props;
 		const { appLayout } = screenProps;
 		const { propsSwipeRow } = this.state;
 		const { intl, currentScreen, screenReaderEnabled } = screenProps;
-		const { item } = row;
-		const { isOnline, supportLocalControl } = item;
+		const { item, section, index } = row;
+		const { isOnline, supportLocalControl, buttonRow, id } = item;
+
+		if (buttonRow) {
+			return (
+				<View importantForAccessibility={screenProps.currentScreen === 'Devices' ? 'no' : 'no-hide-descendants'}>
+					{this.toggleHiddenListButton()}
+				</View>
+			);
+		}
+
+		const newDevices = navigation.getParam('newDevices', {}) || {};
+
+		const sectionLength = section.data.length;
+		const isLast = index === sectionLength - 1;
 
 		return (
 			<DeviceRow
@@ -460,8 +593,92 @@ class DevicesTab extends View {
 				onPressDimButton={this.showDimInfo}
 				propsSwipeRow={propsSwipeRow}
 				screenReaderEnabled={screenReaderEnabled}
+				isNew={!!newDevices[id]}
+				gatewayName={section.header}
+				onNewlyAddedDidMount={this.onNewlyAddedDidMount}
+				onPressDeviceAction={this.onPressDeviceAction}
+				isLast={isLast}
 			/>
 		);
+	}
+
+	onPressDeviceAction() {
+		this.normalizeNewlyAddedUI();
+	}
+
+	normalizeNewlyAddedUITimeout() {
+		const { navigation } = this.props;
+		const newDevices = navigation.getParam('newDevices', null);
+		if (newDevices && !this.timeoutNormalizeNewlyAdded ) {
+			this.timeoutNormalizeNewlyAdded = setTimeout(() => {
+				this.normalizeNewlyAddedUI();
+				clearTimeout(this.timeoutNormalizeNewlyAdded);
+				this.timeoutNormalizeNewlyAdded = null;
+			}, 3000);
+		}
+	}
+
+	normalizeNewlyAddedUI() {
+		const { navigation } = this.props;
+		const newDevices = navigation.getParam('newDevices', null);
+		if (newDevices) {
+			LayoutAnimation.configureNext(LayoutAnimations.linearCUD(300), () => {
+				// Callback only available in iOS
+				LayoutAnimation.configureNext(null);
+			});
+			navigation.setParams({
+				newDevices: undefined,
+			});
+		}
+	}
+
+	onNewlyAddedDidMount(id: number, clientName: string) {
+		const { rowsAndSections, navigation } = this.props;
+		const { visibleList } = rowsAndSections;
+		const newDevices = navigation.getParam('newDevices', {});
+		let section, row;
+		let item = newDevices[id];
+		if (item && item.mainNode) {
+			visibleList.map((list: Object, index: number) => {
+				if (list.header === clientName) {
+					section = index;
+					list.data.map((l: Object, i: number) => {
+						if (l.id === id) {
+							row = i;
+						}
+					});
+				}
+			});
+			if (this.listView) {
+				this.listView.scrollToLocation({
+					animated: true,
+					sectionIndex: section,
+					itemIndex: row,
+					viewPosition: 0.4,
+				});
+			}
+		}
+	}
+
+	addNewDevice() {
+		const { navigation, gateways } = this.props;
+		const gatewaysLen = gateways.length;
+		if (gatewaysLen > 0) {
+			const singleGateway = gatewaysLen === 1;
+			navigation.navigate('AddDevice', {
+				selectLocation: !singleGateway,
+				gateway: singleGateway ? gateways[0] : null,
+			});
+		}
+	}
+
+	prepareFinalListData(rowsAndSections: Object): Array<Object> {
+		const { showHiddenList } = this.state;
+		const { visibleList, hiddenList } = rowsAndSections;
+		if (!showHiddenList) {
+			return visibleList;
+		}
+		return visibleList.concat(hiddenList);
 	}
 
 	render(): Object {
@@ -475,14 +692,12 @@ class DevicesTab extends View {
 		} = this.props;
 		const { appLayout, intl } = screenProps;
 		const {
-			showHiddenList,
 			isRefreshing,
 			addGateway,
 			propsSwipeRow,
 			scrollEnabled,
 			showRefresh,
 		} = this.state;
-		const { visibleList, hiddenList } = rowsAndSections;
 
 		const style = this.getStyles(appLayout);
 
@@ -516,43 +731,28 @@ class DevicesTab extends View {
 			backdropOpacity,
 			showHeader,
 		} = this.getDialogueBoxData(style, appLayout, intl);
+		const listData = this.prepareFinalListData(rowsAndSections);
 
 		return (
-			<ScrollView style={style.container}
-				scrollEnabled={scrollEnabled}
-				refreshControl={
-					<RefreshControl
-						enabled={showRefresh}
-						refreshing={isRefreshing}
-						onRefresh={this.onRefresh}
-					/>}
-				onStartShouldSetResponder={this.handleOnStartShouldSetResponder}
-			>
+			<View style={style.container}>
 				<SectionList
-					sections={visibleList}
+					sections={listData}
 					renderItem={this.renderRow}
 					renderSectionHeader={this.renderSectionHeader}
+					stickySectionHeadersEnabled={true}
+					refreshControl={
+						<RefreshControl
+							enabled={showRefresh}
+							refreshing={isRefreshing}
+							onRefresh={this.onRefresh}
+						/>
+					}
 					keyExtractor={this.keyExtractor}
 					extraData={extraData}
 					scrollEnabled={scrollEnabled}
 					onStartShouldSetResponder={this.handleOnStartShouldSetResponder}
+					ref={this.setRef}
 				/>
-				<View importantForAccessibility={screenProps.currentScreen === 'Devices' ? 'no' : 'no-hide-descendants'}>
-					{this.toggleHiddenListButton(style)}
-					{showHiddenList ?
-						<SectionList
-							sections={hiddenList}
-							renderItem={this.renderRow}
-							renderSectionHeader={this.renderSectionHeader}
-							keyExtractor={this.keyExtractor}
-							extraData={extraData}
-							scrollEnabled={scrollEnabled}
-							onStartShouldSetResponder={this.handleOnStartShouldSetResponder}
-						/>
-						:
-						<View style={{height: 80}}/>
-					}
-				</View>
 				<DialogueBox
 					showDialogue={showDialogue}
 					showHeader={showHeader}
@@ -566,7 +766,7 @@ class DevicesTab extends View {
 					onPressPositive={onPressPositive}
 					backdropOpacity={backdropOpacity}
 				/>
-			</ScrollView>
+			</View>
 		);
 	}
 
@@ -589,11 +789,13 @@ class DevicesTab extends View {
 				paddingHorizontal: 30,
 				paddingTop: 10,
 				marginLeft: Platform.OS !== 'android' || isPortrait ? 0 : width * 0.08,
+				backgroundColor: Theme.Core.appBackground,
 			},
 			container: {
 				flex: 1,
 				paddingHorizontal: this.props.devices.length === 0 ? 30 : 0,
-				marginLeft: Platform.OS !== 'android' || isPortrait ? 0 : width * 0.08,
+				marginLeft: Platform.OS !== 'android' || isPortrait ? 0 : (width * 0.07303),
+				backgroundColor: Theme.Core.appBackground,
 			},
 			noItemsTitle: {
 				textAlign: 'center',

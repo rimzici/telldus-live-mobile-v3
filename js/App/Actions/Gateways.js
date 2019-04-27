@@ -51,7 +51,7 @@ function autoDetectLocalTellStick(): ThunkAction {
 		// No need to do local discovery if the platform is iOS 9 or less, as it does not support RSAAlgorithm
 		if (supportRSA()) {
 
-		// Establish new UDP socket only after closing the existing socket completely.
+			// Establish new UDP socket only after closing the existing socket completely.
 			closeUDPSocket(() => {
 			// $FlowFixMe
 				socket = dgram.createSocket({
@@ -207,6 +207,16 @@ const resetLocalControlAddress = (gatewayId: number, address: string): Action =>
 	};
 };
 
+const toggleSupportLocal = (gatewayId: number, supportLocal: boolean): Action => {
+	return {
+		type: 'TOGGLE_SUPPORT_LOCAL',
+		gatewayId,
+		payload: {
+			supportLocal,
+		},
+	};
+};
+
 module.exports = {
 	...Gateways,
 	autoDetectLocalTellStick,
@@ -214,4 +224,5 @@ module.exports = {
 	closeUDPSocket,
 	validateLocalControlSupport,
 	resetLocalControlAddress,
+	toggleSupportLocal,
 };

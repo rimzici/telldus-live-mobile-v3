@@ -22,7 +22,7 @@
 'use strict';
 
 import React from 'react';
-import { BackHandler } from 'react-native';
+import { BackHandler, KeyboardAvoidingView, Platform } from 'react-native';
 import { bindActionCreators } from 'redux';
 import { connect } from 'react-redux';
 const isEqual = require('react-fast-compare');
@@ -45,6 +45,7 @@ type Props = {
 	actions?: Object,
 	devices: Object,
 	screenProps: Object,
+	ScreenName: string,
 
 	navigation: Object,
 	children: Object,
@@ -106,21 +107,24 @@ class ScheduleScreen extends View<null, Props, State> {
 
 
 	shouldComponentUpdate(nextProps: Props, nextState: State): boolean {
-		const isStateEqual = isEqual(this.state, nextState);
-		if (!isStateEqual) {
-			return true;
-		}
-		const { gateways, devices, screenProps, ...otherProps } = this.props;
-		const { gateways: gatewaysN, devices: devicesN, screenProps: screenPropsN, ...otherPropsN } = nextProps;
-		if ((Object.keys(gateways.byId).length !== Object.keys(gatewaysN.byId).length) || (Object.keys(devices.byId).length !== Object.keys(devicesN.byId).length)) {
-			return true;
-		}
-		if (screenProps.currentScreen !== screenPropsN.currentScreen) {
-			return true;
-		}
-		const propsChange = shouldUpdate(otherProps, otherPropsN, ['schedule']);
-		if (propsChange) {
-			return true;
+		if (nextProps.ScreenName === nextProps.screenProps.currentScreen) {
+			const isStateEqual = isEqual(this.state, nextState);
+			if (!isStateEqual) {
+				return true;
+			}
+			const { gateways, devices, screenProps, ...otherProps } = this.props;
+			const { gateways: gatewaysN, devices: devicesN, screenProps: screenPropsN, ...otherPropsN } = nextProps;
+			if ((Object.keys(gateways.byId).length !== Object.keys(gatewaysN.byId).length) || (Object.keys(devices.byId).length !== Object.keys(devicesN.byId).length)) {
+				return true;
+			}
+			if (screenProps.currentScreen !== screenPropsN.currentScreen) {
+				return true;
+			}
+			const propsChange = shouldUpdate(otherProps, otherPropsN, ['schedule', 'showModal']);
+			if (propsChange) {
+				return true;
+			}
+			return false;
 		}
 		return false;
 	}
@@ -166,7 +170,6 @@ class ScheduleScreen extends View<null, Props, State> {
 			positiveText,
 			onPressPositive,
 			onPressNegative,
-			dialogueContainerStyle: {backgroundColor: '#00000099'},
 			imageHeader,
 			showIconOnHeader,
 			onPressHeader,
@@ -188,7 +191,7 @@ class ScheduleScreen extends View<null, Props, State> {
 			appLayout,
 		} = screenProps;
 		const { h1, h2, infoButton, loading } = this.state;
-		const { style, modal } = this._getStyle(appLayout);
+		const { style } = this._getStyle(appLayout);
 		const {
 			dialogueHeader,
 			showPositive,
@@ -196,7 +199,6 @@ class ScheduleScreen extends View<null, Props, State> {
 			positiveText,
 			onPressPositive,
 			onPressNegative,
-			dialogueContainerStyle,
 			imageHeader,
 			showIconOnHeader,
 			onPressHeader,
@@ -204,7 +206,10 @@ class ScheduleScreen extends View<null, Props, State> {
 		} = this.getRelativeData();
 
 		return (
-			<View>
+			<View style={{
+				flex: 1,
+				backgroundColor: Theme.Core.appBackground,
+			}}>
 				{loading && (
 					<FullPageActivityIndicator/>
 				)}
@@ -219,27 +224,31 @@ class ScheduleScreen extends View<null, Props, State> {
 						navigation={navigation}
 						{...screenProps}
 						leftIcon={screenProps.currentScreen === 'InitialScreen' ? 'close' : undefined}/>
-					<View style={style}>
-						{React.cloneElement(
-							children,
-							{
-								onDidMount: this.onChildDidMount,
-								navigation,
-								actions,
-								paddingRight: style.paddingHorizontal,
-								devices,
-								schedule,
-								loading: this.loading,
-								isEditMode: this._isEditMode,
-								...screenProps,
-								gateways,
-							},
-						)}
-					</View>
+					<KeyboardAvoidingView
+						behavior="padding"
+						style={{flex: 1}}
+						contentContainerStyle={{flexGrow: 1}}
+						keyboardVerticalOffset={Platform.OS === 'android' ? -500 : 0}>
+						<View style={style}>
+							{React.cloneElement(
+								children,
+								{
+									onDidMount: this.onChildDidMount,
+									navigation,
+									actions,
+									paddingRight: style.paddingHorizontal,
+									devices,
+									schedule,
+									loading: this.loading,
+									isEditMode: this._isEditMode,
+									...screenProps,
+									gateways,
+								},
+							)}
+						</View>
+					</KeyboardAvoidingView>
 					<DialogueBox
 						showDialogue={this.props.showModal}
-						modalStyle={modal}
-						dialogueContainerStyle={dialogueContainerStyle}
 						header={dialogueHeader}
 						text={this.props.validationMessage}
 						showPositive={showPositive}
@@ -266,22 +275,16 @@ class ScheduleScreen extends View<null, Props, State> {
 		const { height, width } = appLayout;
 		const isPortrait = height > width;
 		const deviceWidth = isPortrait ? width : height;
-		const deviceHeight = isPortrait ? height : width;
 		const padding = deviceWidth * Theme.Core.paddingFactor;
 
-		const { navigation } = this.props;
-		const editMode = navigation.getParam('editMode', false);
+		const { screenProps } = this.props;
+		const { currentScreen } = screenProps;
 
-		const notEdit = (this.props.screenProps.currentScreen === 'InitialScreen' && (!editMode))
-			|| this.props.screenProps.currentScreen !== 'InitialScreen';
+		const notEdit = currentScreen !== 'InitialScreen';
 		return {
 			style: {
 				flex: 1,
 				paddingHorizontal: notEdit ? padding : 0,
-			},
-			modal: {
-				alignSelf: 'center',
-				top: deviceHeight * 0.3,
 			},
 		};
 	};

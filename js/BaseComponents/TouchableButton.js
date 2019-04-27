@@ -27,12 +27,16 @@ import { intlShape, injectIntl } from 'react-intl';
 
 import i18n from '../App/Translations/common';
 import Text from './Text';
+import Throbber from './Throbber';
+import View from './View';
 import Theme from '../App/Theme';
 
 type Props = {
 	style?: Object | number | Array<any>,
 	text: string | Object,
 	labelStyle?: Object | number | Array<any>,
+	throbberStyle?: Object | number | Array<any>,
+	throbberContainerStyle?: Object | number | Array<any>,
 	onPress: Function,
 	intl: intlShape.isRequired,
 	postScript?: any,
@@ -40,6 +44,14 @@ type Props = {
 	appLayout: Object,
 	accessible: boolean,
 	accessibilityLabel?: string,
+	disabled?: boolean,
+	showThrobber?: boolean,
+};
+
+type DefaultProps = {
+	disabled: boolean,
+	accessible: boolean,
+	showThrobber: boolean,
 };
 
 class TouchableButton extends Component<Props, void> {
@@ -48,6 +60,12 @@ class TouchableButton extends Component<Props, void> {
 	labelButton: string;
 
 	props: Props;
+
+	static defaultProps: DefaultProps = {
+		disabled: false,
+		accessible: true,
+		showThrobber: false,
+	}
 
 	constructor(props: Props) {
 		super(props);
@@ -70,7 +88,20 @@ class TouchableButton extends Component<Props, void> {
 
 
 	render(): Object {
-		let { style, labelStyle, intl, text, preScript, postScript, accessibilityLabel, accessible } = this.props;
+		let {
+			style,
+			labelStyle,
+			throbberStyle,
+			throbberContainerStyle,
+			intl,
+			text,
+			preScript,
+			postScript,
+			accessibilityLabel,
+			accessible,
+			disabled,
+			showThrobber,
+		} = this.props;
 		let label = typeof text === 'string' ? text : intl.formatMessage(text);
 		let shadow = Theme.Core.shadow;
 		accessibilityLabel = !accessible ? '' :
@@ -80,6 +111,9 @@ class TouchableButton extends Component<Props, void> {
 		let {
 			buttonContainer,
 			buttonLabel,
+			throbberStyleDef,
+			throbberContainerStyleDef,
+			cover,
 		} = this.getStyle();
 
 		return (
@@ -88,12 +122,23 @@ class TouchableButton extends Component<Props, void> {
 				importantForAccessibility={importantForAccessibility}
 				accessibilityLabel={accessibilityLabel}
 				style={[shadow, buttonContainer, style]}
+				disabled={disabled}
 				onPress={this.onPress}>
-				<Text style={[buttonLabel, labelStyle]}
-					accessible={accessible}
-					importantForAccessibility={importantForAccessibility}>
-					{preScript}{label.toUpperCase()}{postScript}
-				</Text>
+				<View style={cover}>
+					<Text style={[buttonLabel, labelStyle]}
+						accessible={accessible}
+						importantForAccessibility={importantForAccessibility}>
+						{preScript}{label.toUpperCase()}{postScript}
+					</Text>
+					{!!showThrobber &&
+					(
+						<Throbber
+							throbberContainerStyle={[throbberContainerStyleDef, throbberContainerStyle]}
+							throbberStyle={[throbberStyleDef, throbberStyle]}
+						/>
+					)
+					}
+				</View>
 			</TouchableOpacity>
 		);
 	}
@@ -109,16 +154,26 @@ class TouchableButton extends Component<Props, void> {
 		let fontSize = deviceWidth * 0.04;
 		fontSize = fontSize > maxFontSize ? maxFontSize : fontSize;
 
+		const borderRadius = 18 + fontSize;
+
 		return {
 			buttonContainer: {
 				backgroundColor: btnPrimaryBg,
-				paddingVertical: 18,
+				paddingVertical: borderRadius / 2,
+				paddingHorizontal: borderRadius / 2,
 				maxWidth: width * 0.9,
 				minWidth: width * 0.5,
-				borderRadius: 18 + fontSize,
+				borderRadius,
 				alignSelf: 'center',
 				alignItems: 'center',
 				justifyContent: 'center',
+				flexDirection: 'row',
+			},
+			cover: {
+				flex: 1,
+				alignItems: 'center',
+				justifyContent: 'center',
+				flexDirection: 'row',
 			},
 			buttonLabel: {
 				color: '#ffffff',
@@ -126,6 +181,13 @@ class TouchableButton extends Component<Props, void> {
 
 				textAlign: 'center',
 				textAlignVertical: 'center',
+			},
+			throbberStyleDef: {
+				color: '#ffffff',
+			},
+			throbberContainerStyleDef: {
+				position: 'relative',
+				marginLeft: 10,
 			},
 		};
 	}

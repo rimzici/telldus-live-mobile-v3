@@ -46,6 +46,7 @@ type Props = {
 	closeSwipeRow: () => void,
 	onTurnOff: number => void,
 	onTurnOn: number => void,
+	onPressDeviceAction?: () => void,
 };
 
 class ToggleButton extends View {
@@ -82,9 +83,10 @@ class ToggleButton extends View {
 			isOpen,
 			closeSwipeRow,
 			actionIcons = {},
+			onPressDeviceAction,
 		} = this.props;
-		const { TURNON, TURNOFF } = device.supportedMethods;
-		const { id, isInState, methodRequested, name, local } = device;
+		const { id, isInState, methodRequested, name, local, supportedMethods = {} } = device;
+		const { TURNON, TURNOFF } = supportedMethods;
 		const width = Theme.Core.buttonWidth;
 
 		const sharedProps = {
@@ -97,6 +99,7 @@ class ToggleButton extends View {
 			isOpen,
 			closeSwipeRow,
 			intl,
+			onPressDeviceAction,
 		};
 
 		const onButton = <OnButton

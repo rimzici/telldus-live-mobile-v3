@@ -39,6 +39,7 @@ import {
 	HistoryNotStored,
 	NoHistory,
 	SmoothingDropDown,
+	GraphViewDropDown,
 } from './SubViews';
 
 import {
@@ -68,6 +69,7 @@ type Props = {
 	showTwo: boolean,
 	screenProps: Object,
 	smoothing: boolean,
+	graphView: string,
 
 	sensorId: number,
 	dispatch: Function,
@@ -102,7 +104,10 @@ class HistoryTab extends View {
 	onToggleChartData: (Object) => void;
 
 	delayRefreshHistoryData: any;
-	onValueChangeSmoothing: () => void;
+	onValueChangeSmoothing: (string, number, Array<Object>) => void;
+	onValueChangeGraphView: (string, number, Array<Object>) => void;
+
+	refreshHistoryDataAfterLiveUpdate: () => void;
 
 	static navigationOptions = ({ navigation }: Object): Object => ({
 		tabBarLabel: ({ tintColor }: Object): Object => (
@@ -114,15 +119,15 @@ class HistoryTab extends View {
 		),
 		tabBarOnPress: ({scene, jumpToIndex}: Object) => {
 			navigation.navigate({
-				routeName: 'History',
-				key: 'History',
+				routeName: 'SHistory',
+				key: 'SHistory',
 			});
 		},
 	});
 
 	static getDerivedStateFromProps(props: Object, state: Object): null | Object {
 		const { screenProps } = props;
-		if (screenProps.currentScreen !== 'History') {
+		if (screenProps.currentScreen !== 'SHistory') {
 			return {
 				hasRefreshed: false,
 			};
@@ -157,6 +162,8 @@ class HistoryTab extends View {
 
 		this.onToggleChartData = this.onToggleChartData.bind(this);
 		this.onValueChangeSmoothing = this.onValueChangeSmoothing.bind(this);
+		this.onValueChangeGraphView = this.onValueChangeGraphView.bind(this);
+		this.refreshHistoryDataAfterLiveUpdate = this.refreshHistoryDataAfterLiveUpdate.bind(this);
 
 		this.delayRefreshHistoryData = null;
 	}
@@ -166,7 +173,7 @@ class HistoryTab extends View {
 		// the conditional check here is to prevent the history related query from happening when being in
 		// overview tab, which can result in delay to open history tab if the query is running in the background.
 		// Data fetch/query is handled at 'didUpdate' method.
-		if (this.props.screenProps.currentScreen === 'History') {
+		if (this.props.screenProps.currentScreen === 'SHistory') {
 			this.getHistoryData(false, true, this.getHistoryDataWithLatestTimestamp());
 		}
 	}
@@ -182,30 +189,42 @@ class HistoryTab extends View {
 	getHistoryData(hasLoaded: boolean = false, refreshing: boolean = false, callBackWhenNoData: Function = () => {}) {
 		const { sensorId, screenProps, dispatch } = this.props;
 		const { formatMessage } = screenProps.intl;
-		getSensorTypes(sensorId, formatMessage).then((types: any) => {
-			if (types && types.length !== 0) {
-				const { selectedOne: selectedOnePrev, selectedTwo: selectedTwoPrev } = this.props;
-				const selectedOne = selectedOnePrev ? selectedOnePrev : types[0];
-				const selectedTwo = selectedTwoPrev ? selectedTwoPrev : (types[1] ? types[1] : null);
-				if (selectedOne) {
-					// $FlowFixMe
-					let queryParams = { ...selectedOne, id: sensorId };
-					this.getSensorTypeHistory(hasLoaded, refreshing, queryParams, 1);
+		if (sensorId) {
+			getSensorTypes(sensorId, formatMessage).then((types: any) => {
+				if (types && types.length !== 0) {
+					const { selectedOne: selectedOnePrev, selectedTwo: selectedTwoPrev } = this.props;
+					const selectedOne = selectedOnePrev ? selectedOnePrev : types[0];
+					const selectedTwo = selectedTwoPrev ? selectedTwoPrev : (types[1] ? types[1] : null);
+					if (selectedOne) {
+						// $FlowFixMe
+						let queryParams = { ...selectedOne, id: sensorId };
+						this.getSensorTypeHistory(hasLoaded, refreshing, queryParams, 1);
+					}
+					if (selectedTwo) {
+						// $FlowFixMe
+						let queryParams = { ...selectedTwo, id: sensorId };
+						this.getSensorTypeHistory(hasLoaded, refreshing, queryParams, 2);
+					}
+					const settings = {
+						selectedOne,
+						selectedTwo,
+					};
+					dispatch(changeDefaultHistorySettings(sensorId, settings));
+					this.setState({
+						list: types,
+					});
+				} else {
+					this.setState({
+						chartDataOne: [],
+						chartDataTwo: [],
+						list: [],
+						refreshing,
+						hasLoaded,
+						isChartLoading: false,
+					});
+					callBackWhenNoData();
 				}
-				if (selectedTwo) {
-					// $FlowFixMe
-					let queryParams = { ...selectedTwo, id: sensorId };
-					this.getSensorTypeHistory(hasLoaded, refreshing, queryParams, 2);
-				}
-				const settings = {
-					selectedOne,
-					selectedTwo,
-				};
-				dispatch(changeDefaultHistorySettings(sensorId, settings));
-				this.setState({
-					list: types,
-				});
-			} else {
+			}).catch(() => {
 				this.setState({
 					chartDataOne: [],
 					chartDataTwo: [],
@@ -215,23 +234,14 @@ class HistoryTab extends View {
 					isChartLoading: false,
 				});
 				callBackWhenNoData();
-			}
-		}).catch(() => {
-			this.setState({
-				chartDataOne: [],
-				chartDataTwo: [],
-				list: [],
-				refreshing,
-				hasLoaded,
-				isChartLoading: false,
 			});
-			callBackWhenNoData();
-		});
+		}
 	}
 
 	getSensorTypeHistory(hasLoaded: boolean, refreshing: boolean, queryParams: SensorHistoryQueryParams, list: 1 | 2) {
 		const { timestamp } = this.state;
-		const { fromTimestamp: from, toTimestamp: to } = timestamp;
+		const { fromTimestamp: from, toTimestamp, liveDataToTimestamp } = timestamp;
+		const to = liveDataToTimestamp ? liveDataToTimestamp : toTimestamp;
 		const params = { ...queryParams, from, to };
 		getHistory('sensor', params).then((data: Object) => {
 			const { chartDataOne, chartDataTwo } = this.state;
@@ -245,8 +255,8 @@ class HistoryTab extends View {
 				});
 			} else {
 				this.setState({
-					chartDataOne,
-					chartDataTwo,
+					chartDataOne: list === 1 ? [] : chartDataOne,
+					chartDataTwo: list === 2 ? [] : chartDataTwo,
 					hasLoaded,
 					refreshing,
 					isChartLoading: false,
@@ -255,8 +265,8 @@ class HistoryTab extends View {
 		}).catch(() => {
 			const { chartDataOne, chartDataTwo } = this.state;
 			this.setState({
-				chartDataOne,
-				chartDataTwo,
+				chartDataOne: list === 1 ? [] : chartDataOne,
+				chartDataTwo: list === 2 ? [] : chartDataTwo,
 				hasLoaded,
 				refreshing,
 				isChartLoading: false,
@@ -309,12 +319,75 @@ class HistoryTab extends View {
 			});
 	}
 
+	refreshHistoryDataAfterLiveUpdate(): Promise<any> {
+		const { sensorId, selectedOne, selectedTwo } = this.props;
+		const { timestamp } = this.state;
+		const { toTimestamp: from, fromTimestamp } = timestamp;// get only those data from previous 'to' till new 'to'[Getting full data again is too slow]
+		const to = moment().unix();
+
+		// Do not update 'toTimestamp' here, instead introduce new variable 'liveDataToTimestamp'
+		let timestampNew = {
+			toTimestamp: from,
+			fromTimestamp,
+			liveDataToTimestamp: to,
+		};
+		const params = {
+			...selectedOne,
+			id: sensorId,
+			from,
+			to,
+		};
+		const paramsTwo = {
+			...selectedTwo,
+			id: sensorId,
+			from,
+			to,
+		};
+		return Promise.all([
+			this.refreshFromLocal(params, true, false, 1, timestampNew),
+			this.refreshFromLocal(paramsTwo, true, false, 2, timestampNew),
+		]);
+	}
+
+	refreshFromLocal(params: Object, hasLoaded: boolean, refreshing: boolean, list: 1 | 2, timestamp?: Object): Promise<any> {
+		return getHistory('sensor', params).then((data: Object) => {
+			const { chartDataOne, chartDataTwo } = this.state;
+			if (data && data.length !== 0) {
+				const newData = data.concat(list === 1 ? chartDataOne : chartDataTwo);
+				this.setState({
+					chartDataOne: list === 1 ? newData : chartDataOne,
+					chartDataTwo: list === 2 ? newData : chartDataTwo,
+					hasLoaded: true,
+					refreshing: false,
+					isChartLoading: false,
+					timestamp,
+				});
+			} else {
+				// This method is only to append any new data if available with the previous data.
+				// If no new data, leave chart data intact.
+				this.setState({
+					hasLoaded,
+					refreshing,
+					isChartLoading: false,
+				});
+			}
+		}).catch(() => {
+			// This method is only to append any new data if available with the previous data.
+			// If no new data, leave chart data intact.
+			this.setState({
+				hasLoaded,
+				refreshing,
+				isChartLoading: false,
+			});
+		});
+	}
+
 	shouldComponentUpdate(nextProps: Object, nextState: Object): boolean {
 		const { screenProps, keepHistory } = nextProps;
 		const { appLayout, currentScreen } = screenProps;
-		if (currentScreen === 'History') {
+		if (currentScreen === 'SHistory') {
 			const { chartDataOne, chartDataTwo, list, ...others } = this.state;
-			if (this.props.screenProps.currentScreen !== 'History') {
+			if (this.props.screenProps.currentScreen !== 'SHistory') {
 				return true;
 			}
 
@@ -337,7 +410,7 @@ class HistoryTab extends View {
 				return true;
 			}
 
-			const propsChange = shouldUpdate(this.props, nextProps, ['selectedOne', 'selectedTwo', 'showOne', 'showTwo', 'smoothing']);
+			const propsChange = shouldUpdate(this.props, nextProps, ['selectedOne', 'selectedTwo', 'showOne', 'showTwo', 'smoothing', 'graphView']);
 			if (propsChange) {
 				return propsChange;
 			}
@@ -350,7 +423,7 @@ class HistoryTab extends View {
 	componentDidUpdate(prevProps: Object, prevState: Object) {
 		const { screenProps } = this.props;
 		const { hasRefreshed, hasLoaded } = this.state;
-		if (screenProps.currentScreen === 'History' && !hasRefreshed) {
+		if (screenProps.currentScreen === 'SHistory' && !hasRefreshed) {
 			// If data fetch did not happen inside 'didMount' do it here
 			if (!hasLoaded) {
 				this.getHistoryDataWithLatestTimestamp();
@@ -386,12 +459,13 @@ class HistoryTab extends View {
 		const { selectedTwo } = this.props;
 		if (selectedTwo && selectedTwo.value !== itemValue) {
 			const { sensorId, dispatch } = this.props;
-			const selectedOne = data.find((item: Object): boolean => {
-				return item.value === itemValue;
-			});
+			const selectedOne = data[itemIndex];
 			const settings = {
 				selectedOne,
 			};
+			this.setState({
+				isChartLoading: true,
+			});
 			dispatch(changeDefaultHistorySettings(sensorId, settings));
 
 			// $FlowFixMe
@@ -407,12 +481,13 @@ class HistoryTab extends View {
 		const { selectedOne } = this.props;
 		if (selectedOne && selectedOne.value !== itemValue) {
 			const { sensorId, dispatch } = this.props;
-			const selectedTwo = data.find((item: Object): boolean => {
-				return item.value === itemValue;
-			});
+			const selectedTwo = data[itemIndex];
 			const settings = {
 				selectedTwo,
 			};
+			this.setState({
+				isChartLoading: true,
+			});
 			dispatch(changeDefaultHistorySettings(sensorId, settings));
 
 			// $FlowFixMe
@@ -462,6 +537,15 @@ class HistoryTab extends View {
 		dispatch(changeDefaultHistorySettings(sensorId, setting));
 	}
 
+	onValueChangeGraphView(itemValue: string, itemIndex: number, data: Array<Object>) {
+		const { sensorId, dispatch } = this.props;
+		const { key: graphView } = data[itemIndex];
+		const setting = {
+			graphView,
+		};
+		dispatch(changeDefaultHistorySettings(sensorId, setting));
+	}
+
 	getMaxDate(index: number, timestamp: Object): string {
 		const { toTimestamp } = timestamp;
 		if (index === 1) {
@@ -480,6 +564,7 @@ class HistoryTab extends View {
 			sensorId,
 			keepHistory,
 			smoothing,
+			graphView,
 		} = this.props;
 		const {
 			list,
@@ -491,6 +576,10 @@ class HistoryTab extends View {
 			propToUpdate,
 			isChartLoading,
 		} = this.state;
+
+		if (!sensorId) {
+			return null;
+		}
 
 		const { appLayout, intl } = screenProps;
 		const { formatMessage } = intl;
@@ -507,7 +596,9 @@ class HistoryTab extends View {
 
 		if (!keepHistory) {
 			return (
-				<ScrollView>
+				<ScrollView style={{
+					backgroundColor: Theme.Core.appBackground,
+				}}>
 					<View style={containerStyle}>
 						<HistoryNotStored
 							sensorId={sensorId}
@@ -535,10 +626,13 @@ class HistoryTab extends View {
 			sensorId,
 			isChartLoading,
 			smoothing,
+			graphView,
 		};
 
 		return (
-			<ScrollView>
+			<ScrollView style={{
+				backgroundColor: Theme.Core.appBackground,
+			}}>
 				<View style={containerStyle}>
 					<View style={{
 						flexDirection: 'row',
@@ -563,7 +657,8 @@ class HistoryTab extends View {
 						timestamp={timestamp}
 						appLayout={appLayout}
 						showCalendar={showCalendar}
-						onToggleChartData={this.onToggleChartData}/>
+						onToggleChartData={this.onToggleChartData}
+						refreshHistoryDataAfterLiveUpdate={this.refreshHistoryDataAfterLiveUpdate}/>
 					<GraphValuesDropDown
 						selectedOne={selectedOne}
 						selectedTwo={selectedTwo}
@@ -572,6 +667,11 @@ class HistoryTab extends View {
 						onValueChangeTwo={this.onValueChangeTwo}
 						appLayout={appLayout}
 						intl={intl}/>
+					<GraphViewDropDown
+						graphView={graphView}
+						appLayout={appLayout}
+						intl={intl}
+						onValueChange={this.onValueChangeGraphView}/>
 					<SmoothingDropDown
 						smoothing={smoothing}
 						appLayout={appLayout}
@@ -622,6 +722,7 @@ function prepareDefaultSettings(defaultSettings?: Object): Object {
 		showOne: true,
 		showTwo: true,
 		smoothing: false,
+		graphView: 'overview',
 	};
 	if (!defaultSettings) {
 		return settings;
@@ -639,13 +740,14 @@ function mapStateToProps(state: Object, ownProps: Object): Object {
 	const id = ownProps.navigation.getParam('id', null);
 	const { defaultSensorSettings } = state.sensorsList;
 	const defaultSettings = defaultSensorSettings[id];
-	const { keepHistory } = state.sensors.byId[id];
+	const { keepHistory } = state.sensors.byId[id] ? state.sensors.byId[id] : {};
 	const {
 		selectedOne = null,
 		selectedTwo = null,
 		showOne = true,
 		showTwo = true,
 		smoothing = false,
+		graphView = 'overview',
 	} = prepareDefaultSettings(defaultSettings);
 
 	return {
@@ -656,6 +758,7 @@ function mapStateToProps(state: Object, ownProps: Object): Object {
 		showOne,
 		showTwo,
 		smoothing,
+		graphView,
 	};
 }
 

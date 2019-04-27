@@ -235,7 +235,6 @@ class JobRow extends View<null, Props, null> {
 						}}
 						timeStyle={time}
 						timeContainerStyle={{ opacity }}
-						rowStyle={{ opacity }}
 						rowContainerStyle={rowContainer}
 						rowWithTriangleContainerStyle={rowWithTriangleContainer}
 						triangleColor={methodIconContainer.backgroundColor}
@@ -243,34 +242,36 @@ class JobRow extends View<null, Props, null> {
 						isFirst={isFirst}
 					>
 						{actionIcon}
-						<TextRowWrapper style={textWrapper} appLayout={appLayout}>
-							<Title numberOfLines={1} ellipsizeMode="tail" style={title} appLayout={appLayout}>
-								{deviceName}
-							</Title>
-							<Description numberOfLines={1} ellipsizeMode="tail" style={description} appLayout={appLayout}>
-								{repeat}
-								{type === 'time' && (
-									<FormattedTime
-										value={timestamp}
-										hour="numeric"
-										minute="numeric"
-										style={description}
-									/>)
-								}
-							</Description>
-						</TextRowWrapper>
-						{!!offset && (
-							<IconTelldus
-								icon="offset"
-								style={iconOffset}
-							/>
-						)}
-						{!!randomInterval && (
-							<IconTelldus
-								icon="random"
-								style={iconRandom}
-							/>
-						)}
+						<View style={{ flex: 1, opacity }}>
+							<TextRowWrapper style={textWrapper} appLayout={appLayout}>
+								<Title numberOfLines={1} ellipsizeMode="tail" style={title} appLayout={appLayout}>
+									{deviceName}
+								</Title>
+								<Description numberOfLines={1} ellipsizeMode="tail" style={description} appLayout={appLayout}>
+									{repeat}{' '}
+									{type === 'time' && (
+										<FormattedTime
+											value={timestamp}
+											hour="numeric"
+											minute="numeric"
+											style={description}
+										/>)
+									}
+								</Description>
+							</TextRowWrapper>
+							{!!offset && (
+								<IconTelldus
+									icon="offset"
+									style={iconOffset}
+								/>
+							)}
+							{!!randomInterval && (
+								<IconTelldus
+									icon="random"
+									style={iconRandom}
+								/>
+							)}
+						</View>
 					</ListRow>
 				</TouchableOpacity>
 				{!!showNow && (
@@ -294,12 +295,13 @@ class JobRow extends View<null, Props, null> {
 		const { intl, method, appLayout, methodValue, expired, deviceSupportedMethods, deviceType } = this.props;
 		const { formatMessage } = intl;
 		const action = ACTIONS.find((a: Object): boolean => a.method === method);
-		const { methodIconContainer, methodIcon } = this._getStyle(appLayout);
-		const actionIcons = getDeviceActionIcon(deviceType, null, deviceSupportedMethods);
-		const methodString = methods[action.method];
-		let iconName = actionIcons[methodString];
 
 		if (action) {
+			const { methodIconContainer, methodIcon } = this._getStyle(appLayout);
+			const actionIcons = getDeviceActionIcon(deviceType, null, deviceSupportedMethods);
+			const methodString = methods[action.method];
+			let iconName = actionIcons[methodString];
+
 			if (action.name === 'Dim') {
 				const roundVal = Math.round(methodValue / 255 * 100);
 				const value = `${roundVal}%`;
@@ -370,7 +372,9 @@ class JobRow extends View<null, Props, null> {
 		let { height, width } = appLayout;
 		let isPortrait = height > width;
 		let deviceWidth = isPortrait ? width : height;
-		let headerHeight = (Platform.OS === 'android' && !isPortrait) ? (width * 0.1111) + (height * 0.13) : 0;
+
+		const { land } = Theme.Core.headerHeightFactor;
+		let headerHeight = (Platform.OS === 'android' && !isPortrait) ? (width * land) + (height * 0.13) : 0;
 		width = width - headerHeight;
 
 		const timeWidth = width * 0.26;

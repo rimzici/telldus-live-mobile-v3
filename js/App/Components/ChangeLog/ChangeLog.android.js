@@ -90,7 +90,7 @@ class ChangeLogNavigator extends View {
 
 		const appVersion = DeviceInfo.getReadableVersion();
 		this.h1 = formatMessage(i18n.changeLogHeaderOne);
-		this.h2 = `${formatMessage(i18n.changeLogHeaderTwo)} ${appVersion.substring(0, 3)}`;
+		this.h2 = `${formatMessage(i18n.changeLogHeaderTwo)} ${appVersion.substring(0, 4)}`;
 
 		this.nextButton = formatMessage(i18n.next);
 		this.skipButton = formatMessage(i18n.skipButton).toUpperCase();
@@ -252,7 +252,7 @@ class ChangeLogNavigator extends View {
 				supportedOrientations={['portrait', 'landscape']}>
 				<View style={{flex: 1, backgroundColor: Theme.Core.appBackground}} onLayout={onLayout}>
 					<NavigationHeader showLeftIcon={false} topMargin={false}/>
-					<ChangeLogPoster h1={h1} h2={h2}/>
+					<ChangeLogPoster h1={h1} h2={h2} appLayout={appLayout}/>
 					<ScrollView>
 						<Wizard
 							intl={intl}
@@ -272,7 +272,7 @@ class ChangeLogNavigator extends View {
 								buttonStyle={floatingButtonLeft}
 								iconStyle={styles.buttonIconStyle}/>
 							)}
-							{Screens.map((screen: number, index: number): Object => {
+							{Screens.length > 1 && Screens.map((screen: number, index: number): Object => {
 								let backgroundColor = Screens[index] === currentScreen ?
 									Theme.Core.brandSecondary : '#00000080';
 								return <View style={[stepIndicator, {

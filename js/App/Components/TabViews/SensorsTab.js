@@ -22,7 +22,7 @@
 'use strict';
 
 import React from 'react';
-import { SectionList, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { SectionList, TouchableOpacity, RefreshControl, LayoutAnimation } from 'react-native';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
 import Platform from 'Platform';
@@ -30,11 +30,11 @@ import Platform from 'Platform';
 import { View, IconTelldus, DialogueBox, DialogueHeader, Text } from '../../../BaseComponents';
 import { DeviceHeader, SensorRow } from './SubViews';
 
-import { getSensors, setIgnoreSensor, showToast } from '../../Actions';
+import { getSensors, setIgnoreSensor, showToast, getGateways } from '../../Actions';
 
 import i18n from '../../Translations/common';
 import { parseSensorsForListView } from '../../Reducers/Sensors';
-import { getTabBarIcon } from '../../Lib';
+import { getTabBarIcon, LayoutAnimations } from '../../Lib';
 import Theme from '../../Theme';
 
 type Props = {
@@ -43,6 +43,8 @@ type Props = {
 	screenReaderEnabled: boolean,
 	navigation: Object,
 	dispatch: Function,
+	sensors: Array<any>,
+	sensorsDidFetch: boolean,
 };
 
 type State = {
@@ -69,10 +71,23 @@ class SensorsTab extends View {
 	onConfirmDialogueHide: () => void;
 	openSensorDetail: (number) => void;
 
-	static navigationOptions = ({navigation, screenProps}: Object): Object => ({
-		title: screenProps.intl.formatMessage(i18n.sensors),
-		tabBarIcon: ({ focused, tintColor }: Object): Object => getTabBarIcon(focused, tintColor, 'sensors'),
-	});
+	setRef: (any) => void;
+	listView: any;
+	defaultDescriptionButton: string;
+
+	noSensorsTitle: string;
+	noSensorsContent: string;
+
+	static navigationOptions = ({navigation, screenProps}: Object): Object => {
+		const { intl, currentScreen } = screenProps;
+		const { formatMessage } = intl;
+		const postScript = currentScreen === 'Sensors' ? formatMessage(i18n.labelActive) : formatMessage(i18n.defaultDescriptionButton);
+		return {
+			title: formatMessage(i18n.sensors),
+			tabBarIcon: ({ focused, tintColor }: Object): Object => getTabBarIcon(focused, tintColor, 'sensors'),
+			tabBarAccessibilityLabel: `${formatMessage(i18n.sensorsTab)}, ${postScript}`,
+		};
+	};
 
 	constructor(props: Props) {
 		super(props);
@@ -103,6 +118,7 @@ class SensorsTab extends View {
 
 		this.addedToHiddenList = formatMessage(i18n.sensorAddedToHiddenList);
 		this.removedFromHiddenList = formatMessage(i18n.sensorRemovedFromHiddenList);
+		this.defaultDescriptionButton = formatMessage(i18n.defaultDescriptionButton);
 
 		let hiddenSensors = formatMessage(i18n.hiddenSensors).toLowerCase();
 		this.hideHidden = `${formatMessage(i18n.hide)} ${hiddenSensors}`;
@@ -114,6 +130,13 @@ class SensorsTab extends View {
 		this.labelHide = formatMessage(i18n.hide).toUpperCase();
 
 		this.openSensorDetail = this.openSensorDetail.bind(this);
+		this.setRef = this.setRef.bind(this);
+		this.listView = null;
+
+		this.timeoutScrollToHidden = null;
+
+		this.noSensorsTitle = formatMessage(i18n.noSensorsTitle);
+		this.noSensorsContent = formatMessage(i18n.noSensorsContent);
 	}
 
 	shouldComponentUpdate(nextProps: Object, nextState: Object): boolean {
@@ -122,20 +145,31 @@ class SensorsTab extends View {
 		return (currentScreen === 'Sensors') || (currentScreen !== 'Sensors' && prevScreen === 'Sensors');
 	}
 
+	componentWillUnmount() {
+		clearTimeout(this.timeoutScrollToHidden);
+	}
+
+	setRef(ref: any) {
+		this.listView = ref;
+	}
+
 	onRefresh() {
 		this.setState({
 			isRefreshing: true,
 		});
-		this.props.dispatch(getSensors())
-			.then(() => {
-				this.setState({
-					isRefreshing: false,
-				});
-			}).catch(() => {
-				this.setState({
-					isRefreshing: false,
-				});
+		let promises = [
+			this.props.dispatch(getGateways()),
+			this.props.dispatch(getSensors()),
+		];
+		Promise.all(promises).then(() => {
+			this.setState({
+				isRefreshing: false,
 			});
+		}).catch(() => {
+			this.setState({
+				isRefreshing: false,
+			});
+		});
 	}
 
 	keyExtractor(item: Object): string {
@@ -143,8 +177,26 @@ class SensorsTab extends View {
 	}
 
 	toggleHiddenList() {
+		const { rowsAndSections } = this.props;
+		const { hiddenList, visibleList } = rowsAndSections;
+
+		LayoutAnimation.configureNext(LayoutAnimations.linearCUD(300));
 		this.setState({
 			showHiddenList: !this.state.showHiddenList,
+		}, () => {
+			const { showHiddenList } = this.state;
+			if (showHiddenList && hiddenList.length > 0 && visibleList.length > 0) {
+				this.timeoutScrollToHidden = setTimeout(() => {
+					if (this.listView) {
+						this.listView.scrollToLocation({
+							animated: true,
+							sectionIndex: visibleList.length - 1,
+							itemIndex: 0,
+							viewPosition: 0.7,
+						});
+					}
+				}, 500);
+			}
 		});
 	}
 
@@ -189,19 +241,26 @@ class SensorsTab extends View {
 		});
 	}
 
-	toggleHiddenListButton(style: Object): Object {
+	toggleHiddenListButton(): Object {
 		const { screenProps } = this.props;
 		const accessible = screenProps.currentScreen === 'Sensors';
+		const style = this.getStyles(screenProps.appLayout);
+
+		const { showHiddenList } = this.state;
+		const accessibilityLabelOne = showHiddenList ? this.hideHidden : this.showHidden;
+		const accessibilityLabel = `${accessibilityLabelOne}, ${this.defaultDescriptionButton}`;
+
 		return (
 			<TouchableOpacity
 				style={style.toggleHiddenListButton}
-				nPress={this.toggleHiddenList}
+				onPress={this.toggleHiddenList}
 				accessible={accessible}
+				accessibilityLabel={accessibilityLabel}
 				importantForAccessibility={accessible ? 'yes' : 'no-hide-descendants'}>
 				<IconTelldus icon="hidden" style={style.toggleHiddenListIcon}
 					importantForAccessibility="no" accessible={false}/>
-				<Text style={style.toggleHiddenListText} accessible={accessible}>
-					{this.state.showHiddenList ?
+				<Text style={style.toggleHiddenListText} accessible={false}>
+					{showHiddenList ?
 						this.hideHidden
 						:
 						this.showHidden
@@ -211,24 +270,58 @@ class SensorsTab extends View {
 		);
 	}
 
+	noSensorsMessage(style: Object): Object {
+		return (
+			<View style={style.noItemsContainer}>
+				<IconTelldus icon={'sensor'} style={style.sensorIconStyle}/>
+				<Text style={style.noItemsTitle}>
+					{this.noSensorsTitle}
+				</Text>
+				<Text style={style.noItemsContent}>
+					{'\n'}
+					{this.noSensorsContent}
+				</Text>
+			</View>
+		);
+	}
+
+	prepareFinalListData(rowsAndSections: Object): Array<Object> {
+		const { showHiddenList } = this.state;
+		const { visibleList, hiddenList } = rowsAndSections;
+		if (!showHiddenList) {
+			return visibleList;
+		}
+		return visibleList.concat(hiddenList);
+	}
+
 	render(): Object {
 
-		const { rowsAndSections, screenReaderEnabled, screenProps } = this.props;
+		const {
+			rowsAndSections,
+			screenReaderEnabled,
+			screenProps,
+			sensorsDidFetch,
+			sensors,
+		} = this.props;
 		const { appLayout } = screenProps;
 		const {
-			showHiddenList,
 			isRefreshing,
 			propsSwipeRow,
 			showConfirmDialogue,
 		} = this.state;
-		const { visibleList, hiddenList } = rowsAndSections;
 
 		const style = this.getStyles(appLayout);
+
+		if (sensors.length === 0 && sensorsDidFetch) {
+			return this.noSensorsMessage(style);
+		}
 
 		let makeRowAccessible = 0;
 		if (screenReaderEnabled && screenProps.currentScreen === 'Sensors') {
 			makeRowAccessible = 1;
 		}
+
+		const listData = this.prepareFinalListData(rowsAndSections);
 		const extraData = {
 			makeRowAccessible,
 			appLayout,
@@ -236,34 +329,22 @@ class SensorsTab extends View {
 		};
 
 		return (
-			<ScrollView style={style.container}
-				refreshControl={
-					<RefreshControl
-						refreshing={isRefreshing}
-						onRefresh={this.onRefresh}
-					/>}>
+			<View style={style.container}>
 				<SectionList
-					sections={visibleList}
+					sections={listData}
 					renderItem={this.renderRow}
 					renderSectionHeader={this.renderSectionHeader}
 					initialNumToRender={15}
 					keyExtractor={this.keyExtractor}
 					extraData={extraData}
+					stickySectionHeadersEnabled={true}
+					refreshControl={
+						<RefreshControl
+							refreshing={isRefreshing}
+							onRefresh={this.onRefresh}
+						/>}
+					ref={this.setRef}
 				/>
-				<View importantForAccessibility={screenProps.currentScreen === 'Sensors' ? 'no' : 'no-hide-descendants'}>
-					{this.toggleHiddenListButton(style)}
-					{showHiddenList ?
-						<SectionList
-							sections={hiddenList}
-							renderItem={this.renderRow}
-							renderSectionHeader={this.renderSectionHeader}
-							keyExtractor={this.keyExtractor}
-							extraData={extraData}
-						/>
-						:
-						<View style={{height: 80}}/>
-					}
-				</View>
 				<DialogueBox
 					showDialogue={showConfirmDialogue}
 					header={
@@ -286,20 +367,28 @@ class SensorsTab extends View {
 					positiveText={this.labelHide}
 					onPressPositive={this.onConfirmDialogueHide}
 				/>
-			</ScrollView>
+			</View>
 		);
 	}
 
-	renderSectionHeader(sectionData: Object): Object {
+	renderSectionHeader(sectionData: Object): Object | null {
 		const { supportLocalControl, isOnline, websocketOnline } = sectionData.section.data[0];
+
+		if (sectionData.section.header === Theme.Core.buttonRowKey) {
+			return null;
+		}
+
+		const { screenProps } = this.props;
 
 		return (
 			<DeviceHeader
-				gateway={sectionData.section.key}
-				appLayout={this.props.screenProps.appLayout}
+				gateway={sectionData.section.header}
+				appLayout={screenProps.appLayout}
+				intl={screenProps.intl}
 				supportLocalControl={supportLocalControl}
 				isOnline={isOnline}
 				websocketOnline={websocketOnline}
+				accessible={screenProps.currentScreen === 'Sensors'}
 			/>
 		);
 	}
@@ -308,8 +397,19 @@ class SensorsTab extends View {
 		const { screenProps } = this.props;
 		const { propsSwipeRow } = this.state;
 		const { intl, currentScreen, appLayout, screenReaderEnabled } = screenProps;
-		const { item } = row;
-		const { isOnline } = item;
+		const { item, section, index } = row;
+		const { isOnline, buttonRow } = item;
+
+		if (buttonRow) {
+			return (
+				<View importantForAccessibility={screenProps.currentScreen === 'Sensors' ? 'no' : 'no-hide-descendants'}>
+					{this.toggleHiddenListButton()}
+				</View>
+			);
+		}
+
+		const sectionLength = section.data.length;
+		const isLast = index === sectionLength - 1;
 
 		return (
 			<SensorRow
@@ -322,7 +422,8 @@ class SensorsTab extends View {
 				onHiddenRowOpen={this.closeVisibleRows}
 				propsSwipeRow={propsSwipeRow}
 				onSettingsSelected={this.openSensorDetail}
-				screenReaderEnabled={screenReaderEnabled}/>
+				screenReaderEnabled={screenReaderEnabled}
+				isLast={isLast}/>
 		);
 	}
 
@@ -349,7 +450,8 @@ class SensorsTab extends View {
 		return {
 			container: {
 				flex: 1,
-				marginLeft: Platform.OS !== 'android' || isPortrait ? 0 : width * 0.08,
+				marginLeft: Platform.OS !== 'android' || isPortrait ? 0 : (width * 0.07303),
+				backgroundColor: Theme.Core.appBackground,
 			},
 			toggleHiddenListButton: {
 				flexDirection: 'row',
@@ -386,6 +488,30 @@ class SensorsTab extends View {
 				fontSize: 13,
 				color: '#6B6969',
 			},
+			noItemsContainer: {
+				flex: 1,
+				alignItems: 'center',
+				justifyContent: 'center',
+				paddingHorizontal: 30,
+				paddingTop: 10,
+				marginLeft: Platform.OS !== 'android' || isPortrait ? 0 : width * 0.08,
+				backgroundColor: Theme.Core.appBackground,
+			},
+			noItemsTitle: {
+				textAlign: 'center',
+				color: '#4C4C4C',
+				fontSize: Math.floor(deviceWidth * 0.068),
+				paddingTop: 15,
+			},
+			noItemsContent: {
+				textAlign: 'center',
+				color: '#4C4C4C',
+				fontSize: Math.floor(deviceWidth * 0.04),
+			},
+			sensorIconStyle: {
+				fontSize: Math.floor(deviceWidth * 0.12),
+				color: Theme.Core.brandSecondary,
+			},
 		};
 	}
 }
@@ -405,6 +531,8 @@ function mapStateToProps(store: Object): Object {
 	return {
 		rowsAndSections: getRowsAndSections(store),
 		screenReaderEnabled,
+		sensors: store.sensors.allIds,
+		sensorsDidFetch: store.sensors.didFetch,
 	};
 }
 

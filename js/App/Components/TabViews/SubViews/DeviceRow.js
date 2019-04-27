@@ -55,7 +55,10 @@ type Props = {
 	currentScreen: string,
 	appLayout: Object,
 	isGatewayActive: boolean,
+	isLast: boolean,
 	tab: string,
+	isNew: boolean,
+	gatewayName: string,
 	powerConsumed: string | null,
 	propsSwipeRow: Object,
 	onBell: (number) => void,
@@ -71,6 +74,9 @@ type Props = {
 	onPressMore: (Array<Object>) => void,
 	onHiddenRowOpen: (string) => void,
 	onPressDimButton: (device: Object) => void,
+	onNewlyAddedDidMount: (number, string) => void,
+	onPressDeviceAction: () => void,
+	screenReaderEnabled: boolean,
 };
 
 type State = {
@@ -87,9 +93,6 @@ type State = {
 class DeviceRow extends View<Props, State> {
 	props: Props;
 	state: State;
-
-	helpViewHiddenRow: string;
-	helpCloseHiddenRow: string;
 
 	onSettingsSelected: Object => void;
 	onSlideActive: () => void;
@@ -109,6 +112,8 @@ class DeviceRow extends View<Props, State> {
 	isTablet: boolean;
 	closeSwipeRow: () => void;
 
+	shouldUpdateSwipeRow: (Object) => boolean;
+
 	state = {
 		disableSwipe: false,
 		isOpen: false,
@@ -122,11 +127,6 @@ class DeviceRow extends View<Props, State> {
 
 	constructor(props: Props) {
 		super(props);
-
-		let { formatMessage } = props.intl;
-
-		this.helpViewHiddenRow = formatMessage(i18n.helpViewHiddenRow);
-		this.helpCloseHiddenRow = formatMessage(i18n.helpCloseHiddenRow);
 
 		this.onSettingsSelected = this.onSettingsSelected.bind(this);
 		this.onSlideActive = this.onSlideActive.bind(this);
@@ -148,6 +148,7 @@ class DeviceRow extends View<Props, State> {
 
 		this.isTablet = DeviceInfo.isTablet();
 		this.closeSwipeRow = this.closeSwipeRow.bind(this);
+		this.shouldUpdateSwipeRow = this.shouldUpdateSwipeRow.bind(this);
 	}
 
 	shouldComponentUpdate(nextProps: Object, nextState: Object): boolean {
@@ -171,7 +172,7 @@ class DeviceRow extends View<Props, State> {
 			}
 
 			const propsChange = shouldUpdate(otherProps, nextOtherProps, [
-				'appLayout', 'device', 'setScrollEnabled', 'isGatewayActive', 'powerConsumed',
+				'appLayout', 'device', 'setScrollEnabled', 'isGatewayActive', 'powerConsumed', 'isNew', 'gatewayName', 'isLast',
 			]);
 			if (propsChange) {
 				return true;
@@ -188,13 +189,28 @@ class DeviceRow extends View<Props, State> {
 		return false;
 	}
 
+	componentDidMount() {
+		const { onNewlyAddedDidMount, device, isNew, gatewayName } = this.props;
+		if (onNewlyAddedDidMount && isNew) {
+			onNewlyAddedDidMount(device.id, gatewayName);
+		}
+	}
+
 	componentDidUpdate(prevProps: Object, prevState: Object) {
-		let { currentScreen, propsSwipeRow, device } = this.props;
+		let {
+			currentScreen,
+			propsSwipeRow,
+			device,
+		} = this.props;
 		const { isOpen } = this.state;
 		let { idToKeepOpen, forceClose } = propsSwipeRow;
 		if (isOpen && (currentScreen !== 'Devices' || (forceClose && device.id !== idToKeepOpen)) ) {
 			this.closeSwipeRow();
 		}
+	}
+
+	shouldUpdateSwipeRow(items: Object): boolean {
+		return true;
 	}
 
 	onSlideActive() {
@@ -353,8 +369,18 @@ class DeviceRow extends View<Props, State> {
 
 	render(): Object {
 		let button = [];
-		let { isOpen, showMoreActions, coverOccupiedWidth, coverMaxWidth } = this.state;
-		const { device, intl, currentScreen, appLayout, isGatewayActive, powerConsumed, onPressDimButton } = this.props;
+		let { isOpen, showMoreActions } = this.state;
+		const {
+			device,
+			intl,
+			currentScreen,
+			appLayout,
+			isGatewayActive,
+			powerConsumed,
+			onPressDimButton,
+			onPressDeviceAction,
+			screenReaderEnabled,
+		} = this.props;
 		const { isInState, name, deviceType, supportedMethods = {} } = device;
 		const styles = this.getStyles(appLayout, isGatewayActive, isInState);
 		const deviceName = name ? name : intl.formatMessage(i18n.noName);
@@ -379,9 +405,14 @@ class DeviceRow extends View<Props, State> {
 			appLayout,
 			actionIcons,
 			closeSwipeRow: this.closeSwipeRow,
+			onPressDeviceAction: onPressDeviceAction,
 		};
 		const icon = getDeviceIcons(deviceType);
 
+		// NOTE: the prop "key" serves two purpose.
+		// 1. The common and strict rule, when rendering array of items key(unique) prop is required.
+		// 2. The same prop is used/accessed inside "TabViews/SubViews/Device/MultiActionModal.js" to override the style
+		// in the case of device groups.
 		if (BELL) {
 			button.unshift(
 				<BellButton
@@ -439,8 +470,7 @@ class DeviceRow extends View<Props, State> {
 		});
 
 		let accessible = currentScreen === 'Devices';
-		let accessibilityLabel = isOpen ? `${getLabelDevice(intl.formatMessage, device)}. ${this.helpCloseHiddenRow}` :
-			`${getLabelDevice(intl.formatMessage, device)}. ${this.helpViewHiddenRow}`;
+		let accessibilityLabel = `${getLabelDevice(intl.formatMessage, device)}, ${intl.formatMessage(i18n.accessibilityLabelViewDD)}`;
 
 		const nameInfo = this.getNameInfo(device, deviceName, powerConsumed, styles);
 
@@ -449,12 +479,13 @@ class DeviceRow extends View<Props, State> {
 				<SwipeRow
 					ref="SwipeRow"
 					rightOpenValue={-Theme.Core.buttonWidth * 2}
-					disableLeftSwipe={this.state.disableSwipe}
+					disableLeftSwipe={this.state.disableSwipe || screenReaderEnabled}
 					disableRightSwipe={true}
 					onRowOpen={this.onRowOpen}
 					onRowClose={this.onRowClose}
 					swipeToOpenPercent={20}
-					directionalDistanceChangeThreshold={2}>
+					directionalDistanceChangeThreshold={2}
+					shouldItemUpdate={this.shouldUpdateSwipeRow}>
 					<HiddenRow device={device} intl={intl} style={styles.hiddenRow}
 						onPressSettings={this.onSettingsSelected} onSetIgnoreDevice={this.onSetIgnoreDevice}
 						isOpen={isOpen}/>
@@ -469,8 +500,7 @@ class DeviceRow extends View<Props, State> {
 						<View style={styles.cover}>
 							<TouchableOpacity
 								style={[styles.touchableContainer]}
-								disabled={!isOpen && coverOccupiedWidth < coverMaxWidth}
-								onPress={this.onShowFullName}
+								onPress={this.onSettingsSelected}
 								accessible={accessible}
 								importantForAccessibility={accessible ? 'yes' : 'no-hide-descendants'}
 								accessibilityLabel={accessibilityLabel}>
@@ -552,6 +582,7 @@ class DeviceRow extends View<Props, State> {
 	}
 
 	getStyles(appLayout: Object, isGatewayActive: boolean, deviceState: string): Object {
+		const { isNew, isLast } = this.props;
 		let { height, width } = appLayout;
 		let isPortrait = height > width;
 		let deviceWidth = isPortrait ? width : height;
@@ -561,6 +592,12 @@ class DeviceRow extends View<Props, State> {
 			maxSizeRowTextOne,
 			maxSizeRowTextTwo,
 			buttonWidth,
+			brandPrimary,
+			brandSecondary,
+			shadow,
+			paddingFactor,
+			offlineColor,
+			rowTextColor,
 		} = Theme.Core;
 
 		let nameFontSize = Math.floor(deviceWidth * 0.047);
@@ -569,10 +606,10 @@ class DeviceRow extends View<Props, State> {
 		let infoFontSize = Math.floor(deviceWidth * 0.039);
 		infoFontSize = infoFontSize > maxSizeRowTextTwo ? maxSizeRowTextTwo : infoFontSize;
 
-		let color = (deviceState === 'TURNOFF' || deviceState === 'STOP') ? Theme.Core.brandPrimary : Theme.Core.brandSecondary;
-		let backgroundColor = !isGatewayActive ? Theme.Core.offlineColor : color;
+		let color = (deviceState === 'TURNOFF' || deviceState === 'STOP') ? brandPrimary : brandSecondary;
+		let backgroundColor = !isGatewayActive ? offlineColor : color;
 
-		const padding = deviceWidth * Theme.Core.paddingFactor;
+		const padding = deviceWidth * paddingFactor;
 
 		return {
 			touchableContainer: {
@@ -583,20 +620,24 @@ class DeviceRow extends View<Props, State> {
 			},
 			row: {
 				marginHorizontal: padding,
-				marginBottom: padding / 2,
+				marginTop: padding / 2,
+				marginBottom: isLast ? padding : 0,
 				backgroundColor: '#FFFFFF',
 				height: rowHeight,
 				borderRadius: 2,
-				...Theme.Core.shadow,
+				...shadow,
+				borderWidth: isNew ? 2 : 0,
+				borderColor: isNew ? brandSecondary : 'transparent',
 			},
 			hiddenRow: {
 				flexDirection: 'row',
-				height: Theme.Core.rowHeight,
-				width: Theme.Core.buttonWidth * 2,
+				height: rowHeight,
+				width: buttonWidth * 2,
 				alignSelf: 'flex-end',
 				justifyContent: 'center',
 				alignItems: 'center',
 				marginRight: padding,
+				marginTop: padding / 2,
 			},
 			cover: {
 				flex: 1,
@@ -624,7 +665,7 @@ class DeviceRow extends View<Props, State> {
 				flexDirection: 'row',
 			},
 			text: {
-				color: Theme.Core.rowTextColor,
+				color: rowTextColor,
 				fontSize: nameFontSize,
 				textAlignVertical: 'center',
 				textAlign: 'left',
@@ -665,14 +706,14 @@ class DeviceRow extends View<Props, State> {
 			},
 			textPowerConsumed: {
 				marginLeft: 6,
-				color: Theme.Core.rowTextColor,
+				color: rowTextColor,
 				fontSize: infoFontSize,
 				textAlignVertical: 'center',
 			},
 			textPowerConsumedTablet: {
 				marginRight: 6,
 				marginTop: infoFontSize * 0.411,
-				color: Theme.Core.rowTextColor,
+				color: rowTextColor,
 				fontSize: infoFontSize,
 				textAlignVertical: 'center',
 			},

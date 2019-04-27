@@ -22,8 +22,7 @@
 'use strict';
 
 import React from 'react';
-import PropTypes from 'prop-types';
-import { BackHandler, ScrollView, KeyboardAvoidingView } from 'react-native';
+import { BackHandler, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { bindActionCreators } from 'redux';
 import { connect } from 'react-redux';
 import _ from 'lodash';
@@ -33,17 +32,25 @@ import { View, DialogueBox, NavigationHeaderPoster } from '../../../../BaseCompo
 import * as modalActions from '../../../Actions/Modal';
 import * as gatewayActions from '../../../Actions/Gateways';
 import * as appDataActions from '../../../Actions/AppData';
+import { createSupportTicketLCT, showToast } from '../../../Actions/App';
 
-import i18n from '../../../Translations/common';
+import {
+	getTokenForLocalControl,
+} from '../../../Lib';
+
 import Theme from '../../../Theme';
 
 type Props = {
-	navigation: Object,
-	children: Object,
-	actions?: Object,
+	ScreenName: string,
 	screenProps: Object,
 	showModal: boolean,
 	validationMessage: any,
+	location: Object,
+	email: string,
+
+	navigation: Object,
+	children: Object,
+	actions?: Object,
 };
 
 type State = {
@@ -56,17 +63,7 @@ type State = {
 class LocationDetailsContainer extends View<null, Props, State> {
 
 	handleBackPress: () => void;
-	onConfirmRemoveLocation: () => void;
 	closeModal: () => void;
-
-	static propTypes = {
-		navigation: PropTypes.object.isRequired,
-		children: PropTypes.object.isRequired,
-		actions: PropTypes.objectOf(PropTypes.func),
-		screenProps: PropTypes.object,
-		showModal: PropTypes.bool,
-		validationMessage: PropTypes.any,
-	};
 
 	state = {
 		h1: '',
@@ -82,14 +79,8 @@ class LocationDetailsContainer extends View<null, Props, State> {
 			onPress: this.goBack,
 		};
 
-		let { formatMessage } = props.screenProps.intl;
-		this.labelDelete = formatMessage(i18n.delete).toUpperCase();
-		this.labelModalheaderOnDel = `${formatMessage(i18n.delete)} ${formatMessage(i18n.location)}?`;
-		this.onRemoveLocationError = `${formatMessage(i18n.failureRemoveLocation)}, ${formatMessage(i18n.please).toLowerCase()} ${formatMessage(i18n.tryAgain)}.`;
-
 		this.closeModal = this.closeModal.bind(this);
 		this.handleBackPress = this.handleBackPress.bind(this);
-		this.onConfirmRemoveLocation = this.onConfirmRemoveLocation.bind(this);
 	}
 
 	componentDidMount() {
@@ -106,11 +97,16 @@ class LocationDetailsContainer extends View<null, Props, State> {
 		return true;
 	}
 
-
 	shouldComponentUpdate(nextProps: Props, nextState: State): boolean {
-		const isStateEqual = _.isEqual(this.state, nextState);
-		const isPropsEqual = _.isEqual(this.props, nextProps);
-		return !(isStateEqual && isPropsEqual);
+		if (nextProps.ScreenName === nextProps.screenProps.currentScreen) {
+			const isStateEqual = _.isEqual(this.state, nextState);
+			if (!isStateEqual) {
+				return true;
+			}
+			const isPropsEqual = _.isEqual(this.props, nextProps);
+			return isPropsEqual;
+		}
+		return false;
 	}
 
 	onChildDidMount = (h1: string, h2: string, infoButton?: Object | null = null) => {
@@ -125,30 +121,7 @@ class LocationDetailsContainer extends View<null, Props, State> {
 		this.props.actions.hideModal();
 	};
 
-	onConfirmRemoveLocation() {
-		const { actions, navigation } = this.props;
-		const location = navigation.getParam('location', {id: null});
-		this.closeModal();
-		actions.removeGateway(location.id).then((res: Object) => {
-			actions.getGateways().then(() => {
-				actions.getAppData();
-			});
-			navigation.pop();
-		}).catch(() => {
-			actions.showModal(this.onRemoveLocationError);
-		});
-	}
-
 	getModalData(extras: any): Object {
-		if (extras === 'DELETE_LOCATION') {
-			return {
-				modalHeader: this.labelModalheaderOnDel,
-				positiveText: this.labelDelete,
-				showNegative: true,
-				onPressPositive: this.onConfirmRemoveLocation,
-				onPressNegative: this.closeModal,
-			};
-		}
 		return {
 			modalHeader: null,
 			positiveText: null,
@@ -167,6 +140,8 @@ class LocationDetailsContainer extends View<null, Props, State> {
 			validationMessage,
 			modalExtras,
 			navigation,
+			location,
+			email,
 		} = this.props;
 		const {
 			appLayout,
@@ -175,7 +150,6 @@ class LocationDetailsContainer extends View<null, Props, State> {
 		const { h1, h2, infoButton } = this.state;
 		const styles = this.getStyle(appLayout);
 		const { modalHeader, positiveText, showNegative, onPressPositive, onPressNegative } = this.getModalData(modalExtras);
-		const location = navigation.getParam('location', {});
 
 		let { width, height } = appLayout;
 		let deviceWidth = height > width ? width : height;
@@ -199,15 +173,21 @@ class LocationDetailsContainer extends View<null, Props, State> {
 				h1,
 				h2,
 				align: 'right',
+				leftIcon: currentScreen === 'TestLocalControl' || currentScreen === 'RequestSupport' ? 'close' : undefined,
 			};
 
 		return (
 			<View style={{
 				flex: 1,
+				backgroundColor: Theme.Core.appBackground,
 			}}>
-				<ScrollView style={{flex: 1}} keyboardShouldPersistTaps={'always'} contentContainerStyle={{flexGrow: 1}}>
-					<KeyboardAvoidingView behavior="padding" style={{flex: 1}} contentContainerStyle={{ justifyContent: 'center'}}>
-						<NavigationHeaderPoster {...posterData}/>
+				<KeyboardAvoidingView
+					behavior="padding"
+					style={{flex: 1}}
+					contentContainerStyle={{ justifyContent: 'center'}}
+					keyboardVerticalOffset={Platform.OS === 'android' ? -500 : 0}>
+					<NavigationHeaderPoster {...posterData}/>
+					<ScrollView style={{flex: 1}} keyboardShouldPersistTaps={'always'} contentContainerStyle={{flexGrow: 1}}>
 						<View style={[styles.style, {paddingHorizontal}]}>
 							{React.cloneElement(
 								children,
@@ -218,11 +198,13 @@ class LocationDetailsContainer extends View<null, Props, State> {
 									navigation,
 									dialogueOpen: showModal,
 									containerWidth: width - (2 * paddingHorizontal),
+									location,
+									email,
 								},
 							)}
 						</View>
-					</KeyboardAvoidingView>
-				</ScrollView>
+					</ScrollView>
+				</KeyboardAvoidingView>
 				<DialogueBox
 					dialogueContainerStyle={{elevation: 0}}
 					header={modalHeader}
@@ -282,18 +264,32 @@ class LocationDetailsContainer extends View<null, Props, State> {
 	}
 }
 
-const mapStateToProps = (store: Object): Object => (
-	{
+const mapStateToProps = (store: Object, ownProps: Object): Object => {
+	let { id } = ownProps.navigation.getParam('location', {id: null});
+
+	const { userProfile = {} } = store.user;
+	const { email } = userProfile;
+
+	return {
+		location: store.gateways.byId[id],
 		showModal: store.modal.openModal,
 		validationMessage: store.modal.data,
 		modalExtras: store.modal.extras,
-	}
-);
+		email,
+	};
+};
 
 const mapDispatchToProps = (dispatch: Function): Object => (
 	{
 		actions: {
-			...bindActionCreators({...modalActions, ...gatewayActions, ...appDataActions}, dispatch),
+			...bindActionCreators({
+				...modalActions,
+				...gatewayActions,
+				...appDataActions,
+				getTokenForLocalControl,
+				createSupportTicketLCT,
+				showToast,
+			}, dispatch),
 		},
 	}
 );

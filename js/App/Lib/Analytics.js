@@ -22,25 +22,40 @@
 
 'use strict';
 
-import { Crashlytics } from 'react-native-fabric';
-import { Platform } from 'react-native';
+import firebase from 'react-native-firebase';
 
 export function reportError(msg: string) {
-	// Weird enough there is not one function in react-native-fabric that works on
-	// both iOS and Android.
-	if (Platform.OS === 'ios') {
-		Crashlytics.recordError(msg);
-	} else {
-		Crashlytics.logException(msg);
+	if (!__DEV__) {
+		firebase.crashlytics().recordError(101, msg);
 	}
 }
 
 export function reportException(e: Error | string) {
-	if (e instanceof Error) {
-		// Log the stack trace
-		Crashlytics.log(e.stack);
-		reportError(e.message);
-	} else {
-		reportError(JSON.stringify(e));
+	if (!__DEV__) {
+		if (e instanceof Error) {
+			// Log the stack trace
+			firebase.crashlytics().log(e.stack);
+			reportError(e.message);
+		} else {
+			reportError(JSON.stringify(e));
+		}
+	}
+}
+
+export function setBoolean(key: string, value: boolean) {
+	if (!__DEV__) {
+		firebase.crashlytics().setBoolValue(key, value);
+	}
+}
+
+export function setUserIdentifier(userId: string = '') {
+	if (!__DEV__) {
+		firebase.crashlytics().setUserIdentifier(userId);
+	}
+}
+
+export function enableCrashlyticsCollection() {
+	if (!__DEV__) {
+		firebase.crashlytics().enableCrashlyticsCollection();
 	}
 }

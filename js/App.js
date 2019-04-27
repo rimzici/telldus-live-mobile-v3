@@ -21,7 +21,7 @@
 'use strict';
 
 import React from 'react';
-import { AccessibilityInfo, UIManager } from 'react-native';
+import { AccessibilityInfo, UIManager, Keyboard } from 'react-native';
 import { connect } from 'react-redux';
 import Platform from 'Platform';
 import StatusBar from 'StatusBar';
@@ -30,15 +30,16 @@ import { injectIntl } from 'react-intl';
 
 import {
 	PreLoginNavigator,
-	AppNavigatorRenderer,
+	PostLoginNavigatorCommon,
 	Push,
 } from './App/Components';
 import ChangeLogNavigator from './App/Components/ChangeLog/ChangeLog';
-import { SafeAreaView } from './BaseComponents';
+import { SafeAreaView, DialogueBox } from './BaseComponents';
 import {
 	setAppLayout,
 	setAccessibilityListener,
 	setAccessibilityInfo,
+	widgetAndroidConfigure,
 } from './App/Actions';
 import {
 	getTranslatableDayNames,
@@ -46,12 +47,12 @@ import {
 } from './App/Lib';
 
 import Theme from './App/Theme';
-const changeLogVersion = '3.8';
+const changeLogVersion = '3.10';
 
 type Props = {
 	dispatch: Function,
 	isTokenValid: boolean,
-	accessToken: string,
+	accessToken: Object,
 	pushTokenRegistered: boolean,
 	prevChangeLogVersion: string,
 	forceShowChangeLog: boolean,
@@ -60,28 +61,74 @@ type Props = {
 	deviceId?: string,
 };
 
-class App extends React.Component<Props, null> {
+type State = {
+	dialogueData: Object,
+	keyboard: boolean,
+};
+
+class App extends React.Component<Props, State> {
 	props: Props;
+	state: State;
 
 	onLayout: (Object) => void;
-	onNotification: any;
+	onNotification: Function | null;
 	setCalendarLocale: () => void;
+
+	toggleDialogueBox: (Object) => null;
+	closeDialogue: (?() => void, ?number) => void;
+	onPressDialoguePositive: () => void;
+	onPressDialogueNegative: () => void;
+	onPressHeader: () => void;
+
+	_keyboardDidShow: () => void;
+	_keyboardDidHide: () => void;
+	keyboardDidShowListener: Object;
+	keyboardDidHideListener: Object;
+
+	onTokenRefreshListener: null | Function;
+
+	timeoutToCallCallback: any;
 
 	constructor(props: Props) {
 		super(props);
 		this.onLayout = this.onLayout.bind(this);
 		this.setCalendarLocale = this.setCalendarLocale.bind(this);
 
+		this.state = {
+			dialogueData: {
+				show: false,
+			},
+			keyboard: false,
+		};
+
 		this.setCalendarLocale();
 		if (Platform.OS === 'android') {
 			UIManager.setLayoutAnimationEnabledExperimental && UIManager.setLayoutAnimationEnabledExperimental(true);
 		}
+		this.onNotification = null;
+
+		this.toggleDialogueBox = this.toggleDialogueBox.bind(this);
+		this.closeDialogue = this.closeDialogue.bind(this);
+		this.onPressDialoguePositive = this.onPressDialoguePositive.bind(this);
+		this.onPressDialogueNegative = this.onPressDialogueNegative.bind(this);
+		this.onPressHeader = this.onPressHeader.bind(this);
+
+		this._keyboardDidShow = this._keyboardDidShow.bind(this);
+		this._keyboardDidHide = this._keyboardDidHide.bind(this);
+
+		this.keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', this._keyboardDidShow);
+		this.keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', this._keyboardDidHide);
+		this.onTokenRefreshListener = null;
+
+		this.timeoutToCallCallback = null;
 	}
 
 	componentDidMount() {
-		let { dispatch } = this.props;
+		let { dispatch, accessToken } = this.props;
 
-		this.pushConf();
+		if (accessToken) {
+			this.pushConf();
+		}
 		AccessibilityInfo.fetch().done((isEnabled: boolean) => {
 			dispatch(setAccessibilityInfo(isEnabled));
 			dispatch(setAccessibilityListener(setAccessibilityInfo));
@@ -93,9 +140,8 @@ class App extends React.Component<Props, null> {
 			StatusBar.setBackgroundColor(Theme.Core.brandPrimary);
 		}
 
-		// Push notification listener.
-		// TODO : Remove conditional check once push in IOS is enabled and same method is present.
-		this.onNotification = Push.onNotification ? Push.onNotification() : null;
+		// sets push notification listeners and returns a method that clears all listeners.
+		this.onNotification = Push.onNotification();
 	}
 
 	setCalendarLocale() {
@@ -110,8 +156,17 @@ class App extends React.Component<Props, null> {
 		LocaleConfig.defaultLocale = locale;
 	}
 
-	componentDidUpdate() {
-		this.pushConf();
+	componentDidUpdate(prevProps: Object) {
+		const { dispatch, accessToken } = this.props;
+		const { accessToken: accessTokenPrev = {} } = prevProps;
+		if (accessToken) {
+			this.pushConf();
+			// Update accesstoken at the widget side, when ever it is refreshed at the App.
+			if (accessTokenPrev.access_token !== accessToken.access_token) {
+				dispatch(widgetAndroidConfigure());// Android.
+				// TODO: Do for iOS once widget is implemented.
+			}
+		}
 	}
 
 	componentWillUnmount() {
@@ -119,12 +174,31 @@ class App extends React.Component<Props, null> {
 		  'change',
 		  setAccessibilityInfo
 		);
-		// TODO : Remove conditional check once push in IOS is enabled and same method is present.
-		if (this.onNotification) {
+
+		if (this.onNotification && typeof this.onNotification === 'function') {
 			// Remove Push notification listener.
 			this.onNotification();
 		}
+		this.keyboardDidShowListener.remove();
+		this.keyboardDidHideListener.remove();
+		if (this.onTokenRefreshListener) {
+			this.onTokenRefreshListener();
+			this.onTokenRefreshListener = null;
+		}
+		clearTimeout(this.timeoutToCallCallback);
 	}
+
+	_keyboardDidShow() {
+		this.setState({
+			keyboard: true,
+		});
+	  }
+
+	  _keyboardDidHide() {
+		this.setState({
+			keyboard: false,
+		});
+	  }
 
 	/*
 	 * calls the push configuration methods, for logged in users, which will generate push token and listen for local and
@@ -132,13 +206,66 @@ class App extends React.Component<Props, null> {
 	 */
 	pushConf() {
 		const { dispatch, ...otherProps } = this.props;
-		if (this.props.accessToken) {
-			dispatch(Push.configure(otherProps));
+		dispatch(Push.configure(otherProps));
+		if (!this.onTokenRefreshListener) {
+			this.onTokenRefreshListener = dispatch(Push.refreshTokenListener(otherProps));
 		}
 	}
 
 	onLayout(ev: Object) {
-		this.props.dispatch(setAppLayout(ev.nativeEvent.layout));
+		if (!this.state.keyboard) {
+			this.props.dispatch(setAppLayout(ev.nativeEvent.layout));
+		}
+	}
+
+	toggleDialogueBox(dialogueData: Object) {
+		this.setState({
+			dialogueData,
+		});
+	}
+
+	closeDialogue(postClose?: () => void = (): void => undefined, timeout?: number = 0) {
+		const { dialogueData } = this.state;
+		this.setState({
+			dialogueData: {
+				...dialogueData,
+				show: false,
+			},
+		}, () => {
+			if (this.timeoutToCallCallback) {
+				clearTimeout(this.timeoutToCallCallback);
+			}
+			this.timeoutToCallCallback = setTimeout(() => {
+				postClose();
+			}, timeout);
+		});
+	}
+
+	onPressDialoguePositive() {
+		const { onPressPositive = this.closeDialogue, closeOnPressPositive = false, timeoutToCallPositive = 0 } = this.state.dialogueData;
+		if (closeOnPressPositive) {
+			this.closeDialogue(onPressPositive, timeoutToCallPositive);
+		} else if (onPressPositive) {
+			onPressPositive();
+		}
+	}
+
+	onPressDialogueNegative() {
+		const { onPressNegative = this.closeDialogue, closeOnPressNegative = false, timeoutToCallNegative = 0 } = this.state.dialogueData;
+		if (closeOnPressNegative) {
+			this.closeDialogue(onPressNegative, timeoutToCallNegative);
+		} else if (onPressNegative) {
+			onPressNegative();
+		}
+	}
+
+	onPressHeader() {
+		const { onPressHeader, closeOnPressHeader = false } = this.state.dialogueData;
+		if (closeOnPressHeader) {
+			this.closeDialogue(onPressHeader, 0);
+		} else if (onPressHeader) {
+			onPressHeader();
+		}
 	}
 
 	render(): Object {
@@ -148,18 +275,36 @@ class App extends React.Component<Props, null> {
 
 		let hasNotLoggedIn = ((!accessToken) || (accessToken && !isTokenValid));
 
+		let {
+			show = false,
+			showHeader = false,
+			imageHeader = false,
+			...others
+		} = this.state.dialogueData;
+
 		return (
-			<SafeAreaView onLayout={this.onLayout}>
+			<SafeAreaView onLayout={this.onLayout} backgroundColor={Theme.Core.appBackground}>
 				{hasNotLoggedIn ?
 					<PreLoginNavigator />
 					:
-					<AppNavigatorRenderer {...this.props}/>
+					<PostLoginNavigatorCommon {...this.props} toggleDialogueBox={this.toggleDialogueBox}/>
 				}
-				<ChangeLogNavigator
-					changeLogVersion={changeLogVersion}
-					showChangeLog={showChangeLog}
-					forceShowChangeLog={forceShowChangeLog}
-					onLayout={this.onLayout}/>
+				{Platform.OS === 'android' && (// 3.10 has new feature only for Android
+					<ChangeLogNavigator
+						changeLogVersion={changeLogVersion}
+						showChangeLog={showChangeLog}
+						forceShowChangeLog={forceShowChangeLog}
+						onLayout={this.onLayout}/>
+				)}
+				<DialogueBox
+					{...others}
+					showDialogue={show}
+					showHeader={showHeader}
+					imageHeader={imageHeader}
+					onPressNegative={this.onPressDialogueNegative}
+					onPressPositive={this.onPressDialoguePositive}
+					onPressHeader={this.onPressHeader}
+				/>
 			</SafeAreaView>
 		);
 	}

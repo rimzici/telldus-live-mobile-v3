@@ -35,7 +35,7 @@ import {
 	DialogueBox,
 } from '../../../BaseComponents';
 import { DimmerControlInfo } from './SubViews/Device';
-import { getDevices } from '../../Actions/Devices';
+import { getDevices, getSensors, getGateways } from '../../Actions';
 import { changeSensorDisplayTypeDB } from '../../Actions/Dashboard';
 
 import i18n from '../../Translations/common';
@@ -97,10 +97,16 @@ class DashboardTab extends View {
 
 	showDimInfo: (Object) => void;
 
-	static navigationOptions = ({navigation, screenProps}: Object): Object => ({
-		title: screenProps.intl.formatMessage(i18n.dashboard),
-		tabBarIcon: ({ focused, tintColor }: Object): Object => getTabBarIcon(focused, tintColor, 'dashboard'),
-	});
+	static navigationOptions = ({navigation, screenProps}: Object): Object => {
+		const { intl, currentScreen } = screenProps;
+		const { formatMessage } = intl;
+		const postScript = currentScreen === 'Dashboard' ? formatMessage(i18n.labelActive) : formatMessage(i18n.defaultDescriptionButton);
+		return {
+			title: formatMessage(i18n.dashboard),
+			tabBarIcon: ({ focused, tintColor }: Object): Object => getTabBarIcon(focused, tintColor, 'dashboard'),
+			tabBarAccessibilityLabel: `${formatMessage(i18n.dashboardTab)}, ${postScript}`,
+		};
+	};
 
 	constructor(props: Props) {
 		super(props);
@@ -173,17 +179,21 @@ class DashboardTab extends View {
 		this.setState({
 			isRefreshing: true,
 		});
-		this.props.dispatch(getDevices())
-			.then(() => {
-				this.setState({
-					isRefreshing: false,
-				});
-			})
-			.catch(() => {
-				this.setState({
-					isRefreshing: false,
-				});
+
+		let promises = [
+			this.props.dispatch(getGateways()),
+			this.props.dispatch(getDevices()),
+			this.props.dispatch(getSensors()),
+		];
+		Promise.all(promises).then(() => {
+			this.setState({
+				isRefreshing: false,
 			});
+		}).catch(() => {
+			this.setState({
+				isRefreshing: false,
+			});
+		});
 	}
 
 	componentDidMount() {
@@ -478,7 +488,8 @@ class DashboardTab extends View {
 				alignItems: 'center',
 				justifyContent: 'center',
 				paddingHorizontal: isDBEmpty ? 30 : padding,
-				marginLeft: Platform.OS !== 'android' || isPortrait ? 0 : width * 0.08,
+				marginLeft: Platform.OS !== 'android' || isPortrait ? 0 : (width * 0.07303),
+				backgroundColor: Theme.Core.appBackground,
 			},
 			starIconSize: isPortrait ? Math.floor(width * 0.12) : Math.floor(height * 0.12),
 			noItemsTitle: {

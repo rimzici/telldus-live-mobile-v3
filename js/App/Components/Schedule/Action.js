@@ -52,7 +52,7 @@ export default class Action extends View<null, ScheduleProps, State> {
 		super(props);
 		const { isEditMode, intl, schedule } = this.props;
 		const { formatMessage } = intl;
-		this.h1 = isEditMode() ? formatMessage(i18n.labelAction) : `2. ${formatMessage(i18n.labelAction)}`;
+		this.h1 = isEditMode() ? formatMessage(i18n.labelAction) : formatMessage(i18n.labelAction);
 		this.h2 = formatMessage(i18n.posterChooseAction);
 		this.infoButton = {
 			tmp: true, // TODO: fill with real fields
@@ -84,7 +84,7 @@ export default class Action extends View<null, ScheduleProps, State> {
 			return {};
 		}
 
-		const { supportedMethods, deviceType } = filteredItem;
+		const { supportedMethods = {}, deviceType } = filteredItem;
 		return { type: getDeviceType(supportedMethods), deviceType, supportedMethods };
 	}
 
@@ -140,12 +140,17 @@ export default class Action extends View<null, ScheduleProps, State> {
 		return deviceWidth * Theme.Core.paddingFactor;
 	}
 
+	_keyExtractor(item: Object, index: number): string {
+		return index.toString();
+	}
+
 	render(): React$Element<FlatList> {
 		const padding = this.getPadding();
 		return (
 			<FlatList
 				data={this.state.dataSource}
 				renderItem={this._renderRow}
+				keyExtractor={this._keyExtractor}
 				contentContainerStyle={{
 					flexGrow: 1,
 					paddingTop: padding,

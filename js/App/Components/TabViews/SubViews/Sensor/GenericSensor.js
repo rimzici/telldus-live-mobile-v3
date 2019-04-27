@@ -32,7 +32,7 @@ type sensorProps = {
 	value: string,
 	unit?: string,
 	icon: string,
-	label?: string,
+	label: string,
 	isLarge: boolean,
 	formatOptions?: Object,
 	coverStyle?: Object,
@@ -51,9 +51,11 @@ const GenericSensor = ({
 
 	const { sensorValue, sensorValueText, sensorValueLabelText } = Theme.Styles;
 
+	const labelLength = label.length;
+
 	return (
 		<View style={[sensorValue, coverStyle]}>
-			{!isLarge && (
+			{!isLarge && labelLength < 14 && (
 				<IconTelldus icon={icon} style={{
 					fontSize: 40,
 					color: '#fff',

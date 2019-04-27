@@ -93,7 +93,7 @@ shouldComponentUpdate(nextProps: Object, nextState: Object): boolean {
 }
 
 getButtonsInfo(item: Object, styles: Object): Object {
-	let { supportedMethods, isInState, isOnline, deviceType } = item, buttons = [], buttonsInfo = [];
+	let { supportedMethods = {}, isInState, isOnline, deviceType } = item, buttons = [], buttonsInfo = [];
 	let { tileWidth, setScrollEnabled, onPressDimButton } = this.props;
 	const {
 		TURNON,
@@ -111,6 +111,10 @@ getButtonsInfo(item: Object, styles: Object): Object {
 	// if these type of devices has any chance of having state other than 'TURNON || TURNOFF', pass it to required button component.(also handle the logic)
 	const actionIcons = getDeviceActionIcon(deviceType, isInState, supportedMethods);
 
+	// NOTE: the prop "key" serves two purpose.
+	// 1. The common and strict rule, when rendering array of items key(unique) prop is required.
+	// 2. The same prop is used/accessed inside "TabViews/SubViews/Device/MultiActionModal.js" to override the style
+	// in the case of device groups.
 	if (BELL) {
 		const iconContainerStyle = !isOnline ? styles.itemIconContainerOffline : styles.itemIconContainerOn;
 

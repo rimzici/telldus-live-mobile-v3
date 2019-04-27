@@ -24,7 +24,7 @@
 
 import firebase from 'react-native-firebase';
 import type { Notification } from 'react-native-firebase';
-const DeviceInfo = require('react-native-device-info');
+import DeviceInfo from 'react-native-device-info';
 
 import type { ThunkAction } from '../Actions/Types';
 import { pushSenderId, pushServiceId } from '../../Config';
@@ -55,8 +55,11 @@ const Push = {
 									return dispatch(Push.getToken(params));
 								}
 							})
-							.catch(() => {
-							// User has rejected permissions
+							.catch((): any => {
+								// User has rejected permissions
+								if (!pushToken || !pushTokenRegistered) {
+									return dispatch(Push.getToken(params));
+								}
 							});
 					}
 				});
@@ -68,7 +71,8 @@ const Push = {
 			'Tellus Alert',
 			firebase.notifications.Android.Importance.Max)
 			.setDescription('Telldus Live alerts on user subscribed events')
-			.enableVibration(true);
+			.enableVibration(true)
+			.setVibrationPattern([0.0, 1000.0, 500.0]);
 
 		firebase.notifications().android.createChannel(channel);
 	},
@@ -76,7 +80,7 @@ const Push = {
 		return (dispatch: Function, getState: Object): Promise<any> => {
 			return firebase.messaging().getToken()
 				.then((token: string): string => {
-					if (pushToken !== token) {
+					if (token && pushToken !== token) {
 						const deviceUniqueId = deviceId ? deviceId : DeviceInfo.getUniqueID();
 						dispatch(registerPushToken(token, DeviceInfo.getDeviceName(), DeviceInfo.getModel(), DeviceInfo.getManufacturer(), DeviceInfo.getSystemVersion(), deviceUniqueId, pushServiceId));
 						dispatch({ type: 'RECEIVED_PUSH_TOKEN', pushToken: token });
@@ -110,11 +114,23 @@ const Push = {
 			  .android.setSmallIcon('icon_notif')
 			  .android.setColor('#e26901')
 			  .android.setDefaults(firebase.notifications.Android.Defaults.All)
+			  .android.setVibrate([0.0, 1000.0, 500.0])
 			  .android.setPriority(firebase.notifications.Android.Priority.High);
 		firebase.notifications().displayNotification(localNotification)
 			.catch((err: any) => {
 				reportException(err);
 			});
+	},
+	refreshTokenListener: ({ deviceId }: Object): ThunkAction => {
+		return (dispatch: Function, getState: Object): Function => {
+			return firebase.messaging().onTokenRefresh((token: string) => {
+				if (token) {
+					const deviceUniqueId = deviceId ? deviceId : DeviceInfo.getUniqueID();
+					dispatch(registerPushToken(token, DeviceInfo.getDeviceName(), DeviceInfo.getModel(), DeviceInfo.getManufacturer(), DeviceInfo.getSystemVersion(), deviceUniqueId, pushServiceId));
+					dispatch({ type: 'RECEIVED_PUSH_TOKEN', pushToken: token });
+				}
+			});
+		};
 	},
 };
 

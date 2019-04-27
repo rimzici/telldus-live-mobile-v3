@@ -30,13 +30,14 @@ const {Jobs: {getJobs}} = actions;
 const {Websockets: {authenticateSession, connectToGateways}} = actions;
 
 function getAppData(): ThunkAction {
-	return (dispatch: Function, getState: Object) => {
+	return (dispatch: Function, getState: Object): any => {
 		dispatch(authenticateSession());
 		dispatch(connectToGateways());
-
-		dispatch(getDevices());
-		dispatch(getSensors());
 		dispatch(getJobs());
+		return Promise.all([
+			dispatch(getDevices()),
+			dispatch(getSensors()),
+		]);
 	};
 }
 

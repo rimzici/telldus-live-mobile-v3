@@ -24,7 +24,11 @@
 import React from 'react';
 import { View, Text, IconTelldus } from '../../../../BaseComponents';
 
+import { getControlIconColorLabel } from '../../../Lib/gatewayUtils';
+import { shouldUpdate } from '../../../Lib';
 import Theme from '../../../Theme';
+
+import i18n from '../../../Translations/common';
 
 type Props = {
 	gateway: Object,
@@ -32,6 +36,8 @@ type Props = {
 	supportLocalControl: boolean,
 	isOnline: boolean,
 	websocketOnline: boolean,
+	accessible: boolean,
+	intl: Object,
 };
 
 export default class DeviceHeader extends View<Props, null> {
@@ -40,10 +46,13 @@ export default class DeviceHeader extends View<Props, null> {
 		super(props);
 	}
 	shouldComponentUpdate(nextProps: Object, nextState: Object): boolean {
-		const { appLayout, supportLocalControl, isOnline, websocketOnline } = this.props;
-
-		return appLayout.width !== nextProps.appLayout.width || supportLocalControl !== nextProps.supportLocalControl ||
-		isOnline !== nextProps.isOnline || websocketOnline !== nextProps.websocketOnline;
+		return shouldUpdate(nextProps, this.props, [
+			'appLayout',
+			'supportLocalControl',
+			'isOnline',
+			'websocketOnline',
+			'accessible',
+		]);
 	}
 
 	render(): Object {
@@ -53,20 +62,31 @@ export default class DeviceHeader extends View<Props, null> {
 			supportLocalControl,
 			isOnline,
 			websocketOnline,
+			accessible,
+			intl,
 		} = this.props;
 
 		const icon = supportLocalControl ? 'localcontrol' : 'cloudcontrol';
 		const {
 			statusInfo,
 			nameFontSize,
+			sectionHeader,
 		} = this.getStyles(appLayout, supportLocalControl);
-		const { locationOffline, locationOnline, locationNoLiveUpdates } = Theme.Core;
-		const iconColor = !isOnline ? locationOffline :
-			!websocketOnline ? locationNoLiveUpdates : locationOnline;
+		const {color: controlIconColor, label} = getControlIconColorLabel(isOnline, websocketOnline, supportLocalControl, intl.formatMessage);
+
+		const control = supportLocalControl ? intl.formatMessage(i18n.labelLocal) : intl.formatMessage(i18n.labelCloud);
+		const accessibilityLabel = intl.formatMessage(i18n.accessibilityLabelListHeader, {
+			gatewayName: gateway,
+			status: label,
+			control,
+		});
 
 		return (
-			<View style={Theme.Styles.sectionHeader}>
-				<IconTelldus icon={icon} style={{...statusInfo, color: iconColor}}/>
+			<View
+				style={sectionHeader}
+				accessible={accessible}
+				accessibilityLabel={accessibilityLabel}>
+				<IconTelldus icon={icon} style={{...statusInfo, color: controlIconColor}}/>
 				<Text style={[Theme.Styles.sectionHeaderText, { fontSize: nameFontSize }]}>
 					{gateway}
 				</Text>
@@ -81,6 +101,8 @@ export default class DeviceHeader extends View<Props, null> {
 
 		const {
 			maxSizeRowTextOne,
+			shadow,
+			paddingFactor,
 		} = Theme.Core;
 
 		let statusInfoSize = Math.floor(deviceWidth * 0.055);
@@ -89,12 +111,24 @@ export default class DeviceHeader extends View<Props, null> {
 		let nameFontSize = Math.floor(deviceWidth * 0.047);
 		nameFontSize = nameFontSize > maxSizeRowTextOne ? maxSizeRowTextOne : nameFontSize;
 
+		const padding = deviceWidth * paddingFactor;
+
 		return {
 			statusInfo: {
 				fontSize: statusInfoSize,
 				marginRight: 5,
 			},
 			nameFontSize,
+			sectionHeader: {
+				flexDirection: 'row',
+				paddingVertical: 2 + (nameFontSize * 0.2),
+				backgroundColor: '#ffffff',
+				alignItems: 'center',
+				paddingLeft: 5 + (nameFontSize * 0.2),
+				justifyContent: 'flex-start',
+				marginBottom: padding / 2,
+				...shadow,
+			},
 		};
 	}
 }

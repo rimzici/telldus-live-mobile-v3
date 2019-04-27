@@ -24,20 +24,20 @@ import React from 'react';
 import { Modal, Platform } from 'react-native';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
-import {
-	VictoryChart,
-	VictoryAxis,
-	VictoryLine,
-	VictoryTheme,
-	VictoryScatter,
-	VictoryZoomContainer,
-} from 'victory-native';
 import moment from 'moment';
 import Orientation from 'react-native-orientation-locker';
 const isEqual = require('react-fast-compare');
+import maxBy from 'lodash/maxBy';
+import minBy from 'lodash/minBy';
 
 import { View, FullPageActivityIndicator } from '../../../../BaseComponents';
 import ChartLegend from './ChartLegend';
+import LineChartDetailed from './LineChartDetailed';
+import LineChart from './LineChart';
+
+import {
+	storeHistory,
+} from '../../../Actions/LocalStorage';
 import shouldUpdate from '../../../Lib/shouldUpdate';
 import Theme from '../../../Theme';
 
@@ -51,23 +51,28 @@ type Props = {
 	showCalendar: boolean,
 	showOne: boolean,
 	showTwo: boolean,
-	liveData: Object,
 	isChartLoading: boolean,
 	smoothing: boolean,
+	graphView: string,
+	liveData: Object,
+	sensorId: number,
 
 	onToggleChartData: (Object) => void,
+	refreshHistoryDataAfterLiveUpdate: () => Promise<any>,
 };
 
 type DefaultProps = {
 	showOne: boolean,
 	showTwo: boolean,
 	smoothing: boolean,
+	graphView: string,
 };
 
 type State = {
 	fullscreen: Object,
 	orientation: any,
 	isLoading: boolean,
+	isUpdating: boolean,
 };
 
 class SensorHistoryLineChart extends View<Props, State> {
@@ -77,19 +82,17 @@ class SensorHistoryLineChart extends View<Props, State> {
 		showOne: true,
 		showTwo: true,
 		smoothing: false,
+		graphView: 'overview',
 	};
 
 	toggleOne: () => void;
 	toggleTwo: () => void;
 	onPressToggleView: () => void;
+	onPressResetChartView: () => void;
 	_orientationDidChange: (string) => void;
 	onRequestClose: () => void;
 
-	getY: (Object) => number;
-	getX: (Object) => number;
-	formatXTick: (number) => string;
-	renderAxis: (Array<Object>, number) => Object;
-	renderLine: (Array<Object>, number) => Object;
+	onShow: () => void;
 
 	constructor(props: Props) {
 		super(props);
@@ -101,20 +104,19 @@ class SensorHistoryLineChart extends View<Props, State> {
 			},
 			orientation: Orientation.getInitialOrientation(),
 			isLoading: false,
+			isUpdating: false,
 		};
+
 		this.toggleOne = this.toggleOne.bind(this);
 		this.toggleTwo = this.toggleTwo.bind(this);
 		this._orientationDidChange = this._orientationDidChange.bind(this);
 		this.onRequestClose = this.onRequestClose.bind(this);
 
 		this.onPressToggleView = this.onPressToggleView.bind(this);
+		this.onPressResetChartView = this.onPressResetChartView.bind(this);
 		Orientation.addOrientationListener(this._orientationDidChange);
 
-		this.getY = this.getY.bind(this);
-		this.getX = this.getX.bind(this);
-		this.formatXTick = this.formatXTick.bind(this);
-		this.renderAxis = this.renderAxis.bind(this);
-		this.renderLine = this.renderLine.bind(this);
+		this.onShow = this.onShow.bind(this);
 	}
 
 	shouldComponentUpdate(nextProps: Object, nextState: Object): boolean {
@@ -123,7 +125,7 @@ class SensorHistoryLineChart extends View<Props, State> {
 			return true;
 		}
 
-		const propsChange = shouldUpdate( this.props, nextProps, ['showOne', 'showTwo', 'isChartLoading', 'smoothing']);
+		const propsChange = shouldUpdate(this.props, nextProps, ['showOne', 'showTwo', 'isChartLoading', 'smoothing', 'graphView', 'liveData']);
 		if (propsChange) {
 			return propsChange;
 		}
@@ -138,15 +140,11 @@ class SensorHistoryLineChart extends View<Props, State> {
 		if (!isTimestampEqual) {
 			return true;
 		}
-		const { liveData } = this.props;
-		const isLiveDataEqual = isEqual(liveData, nextProps.liveData);
-		if (!isLiveDataEqual) {
-			return true;
-		}
 		const isLayoutEqual = nextProps.appLayout.width === this.props.appLayout.width;
 		if (!isLayoutEqual) {
 			return true;
 		}
+
 		const isDataOneEqual = nextProps.chartDataOne.length === this.props.chartDataOne.length;
 		if (!isDataOneEqual) {
 			return true;
@@ -176,45 +174,29 @@ class SensorHistoryLineChart extends View<Props, State> {
 	}
 
 	toggleTwo() {
-		const { showTwo, onToggleChartData } = this.props;
-		const settings = {
-			showTwo: !showTwo,
-		};
-		onToggleChartData(settings);
+		const { showTwo, showOne, onToggleChartData } = this.props;
+		if (showOne || (!showOne && !showTwo)) {
+			onToggleChartData({ showTwo: !showTwo });
+		} else if (!showOne && !showTwo) {
+			onToggleChartData({ showTwo: true });
+		}
 	}
 
 	toggleOne() {
-		const { showOne, onToggleChartData } = this.props;
-		const settings = {
-			showOne: !showOne,
-		};
-		onToggleChartData(settings);
-	}
-
-	getTickConfigX(): Object {
-		const { fromTimestamp, toTimestamp } = this.props.timestamp;
-		const from = moment.unix(fromTimestamp);
-		const to = moment.unix(toTimestamp);
-		const domainX = Math.abs(from.diff(to, 'days'));
-
-		let ticks = [], day = from;
-		ticks.push(fromTimestamp);
-		for (let i = 1; i < domainX; i++) {
-			let d = day.add(1, 'd');
-			ticks.push(d.unix());
+		const { showOne, showTwo, onToggleChartData } = this.props;
+		if (showTwo || (!showTwo && !showOne)) {
+			onToggleChartData({ showOne: !showOne });
+		} else if (!showOne && !showTwo) {
+			onToggleChartData({ showOne: true });
 		}
-		return { ticks };
 	}
 
 	onPressToggleView() {
-		const { fullscreen, orientation } = this.state;
-		const { appLayout } = this.props;
-		const { width, height } = appLayout;
-		const isPortrait = height > width;
+		const { fullscreen } = this.state;
 		const { show } = fullscreen;
 		const force = !show ? true : false;
 
-		const isLoading = (Platform.OS === 'android' && isPortrait) ? true : false;
+		const isLoading = Platform.OS === 'android' ? true : false;
 		this.setState({
 			fullscreen: {
 				show: !show,
@@ -223,19 +205,17 @@ class SensorHistoryLineChart extends View<Props, State> {
 			isLoading,
 		}, () => {
 			const { show: currShow } = this.state.fullscreen;
-			// Modal property 'supportedOrientations' is not supported in Android.
-			// So, forcing landscape on show fullscreen and unlock on hide.
-			// [IOS cannot be handled this way because it has issue when unlocking all orientation]
-			if (Platform.OS === 'android' && currShow && (orientation === 'PORTRAIT' || orientation === 'LANDSCAPE-RIGHT')) {
-				Orientation.lockToLandscapeLeft();
-			}
-			if (Platform.OS === 'android' && currShow && orientation === 'LANDSCAPE-LEFT') {
-				Orientation.lockToLandscapeRight();
-			}
 			if (Platform.OS === 'android' && !currShow) {
 				Orientation.unlockAllOrientations();
 			}
 		});
+	}
+
+	onPressResetChartView() {
+		this.setState({ isLoading: true });
+		setTimeout(() => {
+		  this.setState({ isLoading: false });
+		}, 10);
 	}
 
 	setFullscreenState(show: boolean, force: boolean = false, isLoading: boolean, orientation?: string = this.state.orientation) {
@@ -265,6 +245,61 @@ class SensorHistoryLineChart extends View<Props, State> {
 				this.setFullscreenState(show, force, false);
 			}
 		}
+
+		if (Platform.OS === 'android' && width > height && (show !== prevState.fullscreen.show) && isLoading) {
+			this.setState({
+				isLoading: false,
+			});
+		}
+
+		this.checkForLiveDataAndRefresh(prevProps);
+	}
+
+	checkForLiveDataAndRefresh(prevProps: Object) {
+		const { sensorId, liveData, refreshHistoryDataAfterLiveUpdate } = this.props;
+		const newLiveData = !isEqual(prevProps.liveData, liveData);
+		// New live data available for the selected sensor scales.
+		// Store locally and Refresh.
+		if (newLiveData && !this.state.isUpdating) {
+			this.setState({
+				isUpdating: true,
+			});
+			const dataToStore = this.prepareLiveDataToStoreInSQLite(liveData, sensorId);
+			storeHistory('sensor', dataToStore).then(() => {
+				refreshHistoryDataAfterLiveUpdate().then(() => {
+					this.setState({
+						isUpdating: false,
+					});
+				}).catch(() => {
+					this.setState({
+						isUpdating: false,
+					});
+				});
+			}).catch(() => {
+				this.setState({
+					isUpdating: false,
+				});
+			});
+		}
+	}
+
+	prepareLiveDataToStoreInSQLite(liveData: Object, sensorId: number): Object {
+		let history = [];
+		for (let key in liveData) {
+			const { lastUpdated, name, scale, value } = liveData[key];
+			history.push({
+				ts: lastUpdated,
+				data: [{
+					name,
+					scale,
+					value,
+				}],
+			});
+		}
+		return {
+			history,
+			sensorId,
+		};
 	}
 
 	onRequestClose() {
@@ -274,141 +309,25 @@ class SensorHistoryLineChart extends View<Props, State> {
 		}
 	}
 
-	getY(data: Object): number {
-		return data.value;
-	}
-
-	getX(data: Object): number {
-		return data.ts;
-	}
-
-	formatXTick(tick: number): string {
-		return `${moment.unix(tick).format('D')}/${moment.unix(tick).format('M')}`;
-	}
-
-	renderAxis(d: Array<Object>, i: number): null | Object {
-		const {
-			showOne,
-			showTwo,
-		} = this.props;
-
-		if (!d) {
-			return null;
-		}
-		if (!showOne && i === 0) {
-			return null;
-		}
-		if (!showTwo && i === 1) {
-			return null;
-		}
-
-		const {
-			xOffsets,
-			tickPadding,
-			anchors,
-			chartLineStyle,
-		} = this.getStyle();
-
-		return (
-			<VictoryAxis dependentAxis
-				key={i}
-				offsetX={xOffsets[i]}
-				style={{
-					axis: chartLineStyle,
-					ticks: { padding: tickPadding[i] },
-					tickLabels: { fill: Theme.Core.inactiveTintColor, textAnchor: anchors[i] },
-					grid: chartLineStyle,
-				}}
-				tickCount={3}
-			/>
-		);
-	}
-
-	renderLine(d: Array<Object>, i: number): null | Object {
-		const {
-			showOne,
-			showTwo,
-			smoothing,
-		} = this.props;
-
-		if (!d) {
-			return null;
-		}
-		if (!showOne && i === 0) {
-			return null;
-		}
-		if (!showTwo && i === 1) {
-			return null;
-		}
-
-		const {
-			colors,
-		} = this.getStyle();
-
-		if (d.length === 1) {
-			return (
-				<VictoryScatter
-					key={i}
-					data={d}
-					style={{ data: { fill: colors[i] } }}
-					y={this.getY}
-					x={this.getX}
-				/>
-			);
-		}
-		return (<VictoryLine
-			interpolation={smoothing ? 'monotoneX' : 'linear'}
-			key={i}
-			data={d}
-			style={{ data: { stroke: colors[i] } }}
-			y={this.getY}
-			x={this.getX}
-		/>);
-	}
-
-	getUpdatedData(currentData: Array<Object>, { ts, value }: Object): Array<Object> {
-		const { ts: tsCurrLat } = currentData[0];
-		if (ts > tsCurrLat) {
-			currentData.unshift({ ts, value });
-			return currentData;
-		}
-		return currentData;
-	}
-
 	renderChart(): Object | null {
-		const { fullscreen } = this.state;
+		const { fullscreen, isLoading } = this.state;
 		const { show } = fullscreen;
 		const {
+			chartDataOne,
+			chartDataTwo,
 			selectedOne,
 			selectedTwo,
 			appLayout,
+			timestamp,
 			showOne,
 			showTwo,
-			liveData,
+			isChartLoading,
+			smoothing,
+			graphView,
 		} = this.props;
 
-		let {
-			chartDataOne,
-			chartDataTwo,
-		} = this.props;
-		if (chartDataOne.length === 0 && chartDataOne.length === 0) {
+		if (chartDataOne.length === 0 && chartDataTwo.length === 0) {
 			return null;
-		}
-
-		let chartData = [];
-		if (chartDataOne.length !== 0) {
-			if (liveData.tsOne) {
-				const { tsOne, vOne } = liveData;
-				chartDataOne = this.getUpdatedData(chartDataOne, { ts: tsOne, value: vOne });
-			}
-			chartData.unshift(chartDataOne);
-		}
-		if (chartDataTwo.length !== 0) {
-			if (liveData.tsTwo) {
-				const { tsTwo, vTwo } = liveData;
-				chartDataTwo = this.getUpdatedData(chartDataTwo, { ts: tsTwo, value: vTwo });
-			}
-			chartData.push(chartDataTwo);
 		}
 
 		const {
@@ -416,12 +335,7 @@ class SensorHistoryLineChart extends View<Props, State> {
 			chartWidth,
 			chartHeight,
 			colorsScatter,
-			chartLineStyle,
-			domainPadding,
-			chartPadding,
 		} = this.getStyle();
-
-		const { ticks } = this.getTickConfigX();
 
 		const legendData = [{
 			...selectedOne,
@@ -434,61 +348,83 @@ class SensorHistoryLineChart extends View<Props, State> {
 			color: showTwo ? colorsScatter[1] : Theme.Core.inactiveTintColor,
 		}];
 
+		const max1 = maxBy(chartDataOne, 'value') || { value: 0 };
+		const max2 = maxBy(chartDataTwo, 'value') || { value: 0 };
+		const min1 = minBy(chartDataOne, 'value') || { value: 0 };
+		const min2 = minBy(chartDataTwo, 'value') || { value: 0 };
+
+		const max = maxBy([max1, max2], 'value');
+		const min = minBy([min1, min2], 'value');
+
+		const chartCommonProps = {
+			chartDataOne,
+			chartDataTwo,
+			max1,
+			max2,
+			min1,
+			min2,
+			selectedOne,
+			selectedTwo,
+			appLayout,
+			timestamp,
+			showOne,
+			showTwo,
+			fullscreen,
+			smoothing,
+			graphView,
+		};
+
 		return (
 			<View style={containerStyle}>
 				<ChartLegend
 					legendData={legendData}
 					appLayout={appLayout}
 					fullscreen={show}
-					onPressToggleView={this.onPressToggleView}/>
-				<View style={{flex: 0}}>
-					<VictoryChart
-						theme={VictoryTheme.material}
-						width={chartWidth} height={chartHeight}
-						padding={chartPadding}
-						domainPadding={{ y: domainPadding, x: 20 }}
-						containerComponent={
-							<VictoryZoomContainer/>
+					onPressResetChartView={this.onPressResetChartView}
+					onPressToggleView={this.onPressToggleView} />
+				{isLoading || isChartLoading ?
+					<View style={{ width: chartWidth, height: chartHeight }}>
+						<FullPageActivityIndicator size={'small'} />
+					</View>
+					:
+					<View style={{ flex: 0 }}>
+						{graphView === 'overview' ?
+							<LineChart
+								{...chartCommonProps} />
+							:
+							<LineChartDetailed
+								{...chartCommonProps}
+								max={max}
+								min={min} />
 						}
-					>
-						<VictoryAxis
-							orientation={'bottom'}
-							style={{
-								parent: {
-									border: '0px',
-								},
-								axis: chartLineStyle,
-								tickLabels: { fill: Theme.Core.inactiveTintColor },
-								grid: chartLineStyle,
-							}}
-							tickValues={ticks}
-							tickFormat={this.formatXTick}
-						/>
-						{chartData.map(this.renderAxis)}
-						{chartData.map(this.renderLine)}
-					</VictoryChart>
-				</View>
+					</View>
+				}
 			</View>
 		);
 	}
 
-	render(): any {
+	onShow() {
 		const { fullscreen, orientation, isLoading } = this.state;
 		const { show } = fullscreen;
-		const { isChartLoading } = this.props;
-
-		const {
-			containerStyle,
-			containerWhenLoading,
-		} = this.getStyle();
-		if (isChartLoading) {
-			return (
-				<View style={containerWhenLoading}>
-					<FullPageActivityIndicator size={'small'}/>
-				</View>
-			);
+		// Modal property 'supportedOrientations' is not supported in Android.
+		// So, forcing landscape on show fullscreen and unlock on hide.
+		// [IOS cannot be handled this way because it has issue when unlocking all orientation]
+		if (Platform.OS === 'android' && show && isLoading) {
+			if (orientation === 'PORTRAIT') {
+				Orientation.lockToLandscapeLeft();
+			}
+			if (orientation === 'LANDSCAPE-RIGHT') {
+				Orientation.lockToLandscapeRight();
+			}
+			if (orientation === 'LANDSCAPE-LEFT') {
+				Orientation.lockToLandscapeLeft();
+			}
 		}
+	}
 
+	render(): any {
+		const { fullscreen, orientation } = this.state;
+		const { show } = fullscreen;
 		const chart = this.renderChart();
 		if (!show) {
 			return chart;
@@ -507,19 +443,14 @@ class SensorHistoryLineChart extends View<Props, State> {
 				presentationStyle={'fullScreen'}
 				onRequestClose={this.onRequestClose}
 				supportedOrientations={[supportedOrientations]}
-				hardwareAccelerated={true}>
+				hardwareAccelerated={true}
+				onShow={this.onShow}>
 				<View style={{
 					flex: 1,
 					alignItems: 'center',
 					justifyContent: 'center',
 				}}>
-					{isLoading ?
-						<View style={containerStyle}>
-							<FullPageActivityIndicator size={'small'}/>
-						</View>
-						:
-						chart
-					}
+					{chart}
 				</View>
 			</Modal>
 		);
@@ -532,19 +463,15 @@ class SensorHistoryLineChart extends View<Props, State> {
 		const isPortrait = height > width;
 		const deviceWidth = isPortrait ? width : height;
 
-		const { paddingFactor, brandDanger, brandInfo, shadow, inactiveTintColor } = Theme.Core;
+		const { paddingFactor, brandDanger, brandInfo, shadow } = Theme.Core;
 
 		const padding = deviceWidth * paddingFactor;
 		const outerPadding = padding * 2;
 		// In Android, on force show full screen orientation is locked to 'LANDSCAPE'
 		// So use 'height' on in IOS
 		const chartWidth = (Platform.OS === 'ios' && show && force && isPortrait) ? height - outerPadding : width - outerPadding;
-		const domainPadding = chartWidth * 0.05;
 
 		const top = 25, bottom = 30;
-		const chartPadding = {
-			left: 0, top, right: 0, bottom,
-		};
 
 		const chartHeight = show ? deviceWidth - (top + bottom + outerPadding)
 			:
@@ -579,67 +506,43 @@ class SensorHistoryLineChart extends View<Props, State> {
 			},
 			chartWidth,
 			chartHeight,
-			padding,
-			xOffsets: [0, chartWidth],
-			tickPadding: [-20, 5],
-			anchors: ['start', 'start'],
-			colors: [brandDanger, brandInfo],
 			colorsScatter: [brandDanger, brandInfo],
-			chartPadding,
-			domainPadding,
-			chartLineStyle: {
-				strokeDasharray: '',
-				strokeWidth: 0.9,
-				strokeOpacity: 0.25,
-				fill: inactiveTintColor,
-				stroke: inactiveTintColor,
-				pointerEvents: 'painted',
-			},
 		};
 	}
 }
 
-function getNewData(data: Object, toTimestamp: number, selectedData: Object): any {
+function getNewData(data: Object, toTimestamp: number, selectedData: Object, tsOne?: number, tsTwo?: number): Object {
 	const today = moment().format('YYYY-MM-DD');
 	const toDay = moment.unix(toTimestamp).format('YYYY-MM-DD');
+	// Return live data only if 'to' date is today.
 	if (today !== toDay) {
-		return {
-			tsOne: null,
-			vOne: null,
-			tsTwo: null,
-			vTwo: null,
-		};
+		return {};
 	}
 
-	const { scale: scale1, type: type1, scale2, type2 } = selectedData;
-	let tsOne = null, vOne = null, tsTwo = null, vTwo = null;
+	const { scale1, type1, scale2, type2 } = selectedData;
+	let liveData = {};
 	for (let key in data) {
 		const { name, scale, lastUpdated, value } = data[key];
-		if (name === type1 && scale === scale1) {
-			tsOne = lastUpdated;
-			vOne = parseInt(value, 10);
+		// Return live data only if any of the two chosen scale has new value.
+		if (name === type1 && scale === scale1 && lastUpdated > tsOne) {
+			liveData[key] = {
+				name,
+				scale,
+				lastUpdated,
+				value,
+			};
 		}
-		if (name === type2 && scale === scale2) {
-			tsTwo = lastUpdated;
-			vTwo = parseInt(value, 10);
+		if (name === type2 && scale === scale2 && lastUpdated > tsTwo) {
+			liveData[key] = {
+				name,
+				scale,
+				lastUpdated,
+				value,
+			};
 		}
 	}
 
-	if (!tsOne && !tsTwo) {
-		return {
-			tsOne: null,
-			vOne: null,
-			tsTwo: null,
-			vTwo: null,
-		};
-	}
-
-	return {
-		tsOne,
-		vOne,
-		tsTwo,
-		vTwo,
-	};
+	return liveData;
 }
 
 const checkForNewData = createSelector(
@@ -647,21 +550,41 @@ const checkForNewData = createSelector(
 		({ data }: Object): Object => data,
 		({ toTimestamp }: Object): number => toTimestamp,
 		({ selectedData }: Object): Object => selectedData,
+		({ tsOne }: Object): Object => tsOne,
+		({ tsTwo }: Object): Object => tsTwo,
 	],
-	(data: Object, toTimestamp: number, selectedData: Object): Array<any> => getNewData(data, toTimestamp, selectedData)
+	(data: Object, toTimestamp: number, selectedData: Object, tsOne?: number, tsTwo?: number): Object =>
+		getNewData(data, toTimestamp, selectedData, tsOne, tsTwo)
 );
 
 function mapStateToProps(state: Object, ownProps: Object): Object {
-	const { sensors: { byId }} = state;
-	const { timestamp, sensorId, selectedOne, selectedTwo } = ownProps;
+	const { sensors: { byId } } = state;
+	const {
+		timestamp,
+		sensorId,
+		selectedOne,
+		selectedTwo,
+		chartDataOne = [],
+		chartDataTwo = [],
+	} = ownProps;
 	const sensor = byId[sensorId];
-	const { scale: scale1, type: type1 } = selectedOne ? selectedOne : {scale: null, type: null};
-	const { scale: scale2, type: type2 } = selectedTwo ? selectedTwo : {scale: null, type: null};
+	const { scale: scale1, type: type1 } = selectedOne ? selectedOne : { scale: null, type: null };
+	const { scale: scale2, type: type2 } = selectedTwo ? selectedTwo : { scale: null, type: null };
 	const selectedData = { scale1, type1, scale2, type2 };
 
+	let tsOne, tsTwo;
+	if (chartDataOne[0] && chartDataOne[0].ts) {
+		tsOne = chartDataOne[0].ts;
+	}
+	if (chartDataTwo[0] && chartDataTwo[0].ts) {
+		tsTwo = chartDataTwo[0].ts;
+	}
+
+	let liveData = checkForNewData({ ...sensor, ...timestamp, selectedData, tsOne, tsTwo });
+
 	return {
-		liveData: checkForNewData({...sensor, ...timestamp, selectedData}),
+		liveData,
 	};
 }
 
-export default connect(mapStateToProps, null)(SensorHistoryLineChart);
+export default connect(mapStateToProps)(SensorHistoryLineChart);

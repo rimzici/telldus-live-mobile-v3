@@ -23,7 +23,6 @@
 
 import React from 'react';
 import { SectionList } from 'react-native';
-import PropTypes from 'prop-types';
 import orderBy from 'lodash/orderBy';
 import filter from 'lodash/filter';
 import isEmpty from 'lodash/isEmpty';
@@ -38,7 +37,6 @@ import Theme from '../../Theme';
 interface Props extends ScheduleProps {
 	devices: Object,
 	gateways: Object,
-	resetSchedule: () => void,
 }
 
 type State = {
@@ -47,15 +45,6 @@ type State = {
 };
 
 export default class Device extends View<void, Props, State> {
-
-	static propTypes = {
-		navigation: PropTypes.object,
-		actions: PropTypes.object,
-		devices: PropTypes.object,
-		onDidMount: PropTypes.func,
-		schedule: PropTypes.object,
-		resetSchedule: PropTypes.func,
-	};
 
 	state = {
 		dataSource: this.parseDataForList(this.props.devices.byId, this.props.gateways.byId),
@@ -68,7 +57,7 @@ export default class Device extends View<void, Props, State> {
 
 		let { formatMessage } = this.props.intl;
 
-		this.h1 = `1. ${formatMessage(i18n.labelDevice)}`;
+		this.h1 = formatMessage(i18n.labelDevice);
 		this.h2 = formatMessage(i18n.posterChooseDevice);
 
 		this._renderSectionHeader = this._renderSectionHeader.bind(this);
@@ -76,7 +65,11 @@ export default class Device extends View<void, Props, State> {
 
 	parseDataForList(devices: Object, gateways: Object): Array<Object> {
 		devices = filter(devices, (device: Object): any => !isEmpty(device.supportedMethods));
-		devices = orderBy(devices, [(device: Object): any => device.name.toLowerCase()], ['asc']);
+		devices = orderBy(devices, [(device: Object): any => {
+			let { name } = device;
+			name = typeof name !== 'string' ? '' : name;
+			return name.toLowerCase();
+		}], ['asc']);
 		if (Object.keys(gateways).length > 1) {
 			devices = groupBy(devices, (items: Object): Array<any> => {
 				let gateway = gateways[items.clientId];
@@ -84,7 +77,7 @@ export default class Device extends View<void, Props, State> {
 			});
 			devices = reduce(devices, (acc: Array<any>, next: Object, index: number): Array<any> => {
 				acc.push({
-					key: index,
+					key: `${index}`,
 					data: next,
 				});
 				return acc;
@@ -92,7 +85,7 @@ export default class Device extends View<void, Props, State> {
 			return devices;
 		} else if (Object.keys(gateways).length === 1) {
 			return [{
-				key: '',
+				key: '1',
 				data: [...devices],
 
 			}];
@@ -108,10 +101,6 @@ export default class Device extends View<void, Props, State> {
 
 	shouldComponentUpdate(nextProps: Object, nextState: Object): boolean {
 		return nextProps.currentScreen === 'InitialScreen';
-	}
-
-	componentWillUnmount() {
-		this.props.actions.resetSchedule();
 	}
 
 	onRefresh = () => {
@@ -138,6 +127,10 @@ export default class Device extends View<void, Props, State> {
 		actions.selectDevice(row.id);
 	};
 
+	_keyExtractor(item: Object, index: number): string {
+		return index.toString();
+	}
+
 	render(): React$Element<SectionList> | null {
 		const { dataSource, refreshing } = this.state;
 		if (!dataSource || dataSource.length <= 0) {
@@ -149,22 +142,29 @@ export default class Device extends View<void, Props, State> {
 				sections={dataSource}
 				renderItem={this._renderRow}
 				renderSectionHeader={this._renderSectionHeader}
+				keyExtractor={this._keyExtractor}
 				onRefresh={this.onRefresh}
 				refreshing={refreshing}
 				contentContainerStyle={{
 					flexGrow: 1,
 					paddingTop: padding,
 				}}
+				stickySectionHeadersEnabled={true}
 			/>
 		);
 	}
 
 	_renderRow = (row: Object): Object => {
 		const { appLayout, intl } = this.props;
-		const { item } = row;
+		const { item, section, index } = row;
 		// TODO: use device description
 		const preparedRow = Object.assign({}, item, { description: '' });
-		const {padding} = this.getStyles();
+		const {
+			padding,
+		} = this.getStyles();
+
+		const sectionLength = section.data.length;
+		const isLast = index === sectionLength - 1;
 
 		return (
 			<DeviceRow
@@ -179,7 +179,9 @@ export default class Device extends View<void, Props, State> {
 					justifyContent: 'space-between',
 					marginVertical: undefined,
 					height: undefined,
-					marginBottom: padding / 2,
+					marginTop: padding / 2,
+					marginBottom: isLast ? padding : 0,
+					marginHorizontal: padding,
 				}}
 			/>
 		);
@@ -191,9 +193,12 @@ export default class Device extends View<void, Props, State> {
 		if (dataSource.length === 1) {
 			return null;
 		}
-		const {nameFontSize} = this.getStyles();
+		const {
+			nameFontSize,
+			sectionHeader,
+		} = this.getStyles();
 		return (
-			<View style={[Theme.Styles.sectionHeader, {marginLeft: 0}]}>
+			<View style={sectionHeader}>
 				<Text style={[Theme.Styles.sectionHeaderText, {fontSize: nameFontSize}]}>
 					{key}
 				</Text>
@@ -206,11 +211,14 @@ export default class Device extends View<void, Props, State> {
 		const { height, width } = appLayout;
 		const isPortrait = height > width;
 		const deviceWidth = isPortrait ? width : height;
-		const padding = deviceWidth * Theme.Core.paddingFactor;
 
 		const {
 			maxSizeRowTextOne,
+			paddingFactor,
+			shadow,
 		} = Theme.Core;
+
+		const padding = deviceWidth * paddingFactor;
 
 		let nameFontSize = Math.floor(deviceWidth * 0.047);
 		nameFontSize = nameFontSize > maxSizeRowTextOne ? maxSizeRowTextOne : nameFontSize;
@@ -218,6 +226,16 @@ export default class Device extends View<void, Props, State> {
 		return {
 			nameFontSize,
 			padding,
+			sectionHeader: {
+				flexDirection: 'row',
+				paddingVertical: 2 + (nameFontSize * 0.2),
+				backgroundColor: '#ffffff',
+				alignItems: 'center',
+				paddingLeft: 5 + (nameFontSize * 0.2),
+				justifyContent: 'flex-start',
+				marginBottom: padding / 2,
+				...shadow,
+			},
 		};
 	}
 
